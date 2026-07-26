@@ -2,11 +2,25 @@
 
 All notable changes to **Shappky Async** (`com.shams.srk.shappky`) are documented here.
 
-Version format: **`2.0.<revision>-async`**
+Version format: **`34.52.<revision>-async`** (`versionCode` = `3452xx`)
 
 ---
 
-## [2.0.2-async] — 2026-07-27
+## [34.52.03-async] — 2026-07-27
+
+### Changed
+- Aligned fork versioning with preferred scheme: **`34.52.xx-async`** (replaces temporary `2.0.x-async`)
+- Debug builds append `-debug` to `versionName`
+- APK output named `Shappky-v<versionName>-<abi>.apk`
+
+### Docs
+- GitHub README rewritten for fork identity, what’s new, build/install, HyperOS note
+
+---
+
+## [34.52.02-async] — 2026-07-27
+
+*(formerly shipped as `2.0.2-async`)*
 
 ### Fixed (protection audit)
 - Unified `ProtectionManager.isProtected()` (self + set + regex) across kill paths, including `AppModelFilter`
@@ -16,26 +30,24 @@ Version format: **`2.0.<revision>-async`**
 - SharedPreferences StringSet copied on read/write; Xiaomi/Redmi/POCO default regex
 - Protected apps dialog shuts down widget ShellManager on dismiss
 
-### Added (2.0.1)
-- Protected apps list: **Select all** / **Unselect all** for the current filtered list (toolbar icon + ⋮ menu)
-
-## [2.0.1-async] — 2026-07-26
-
 ### Added
 - Protected apps list: **Select all** / **Unselect all** for the current filtered list (toolbar icon + ⋮ menu)
 
-## [2.0.0-async] — 2026-07-26
+---
+
+## [34.52.01-async] — 2026-07-26
+
+*(formerly shipped as `2.0.1-async` / bootstrap `2.0.0-async`)*
 
 ### Identity
 - Package **`com.shams.srk.shappky`** — side-by-side with stock Shappky
 - App display name → **Shappky Async**
 - Source Code link → this fork (`shamshuddinmgm/shappky`)
-- Version scheme **`2.0.x-async`** (`versionCode` 20000+)
+- `compileSdk = 36` (not 36.1) for broader PackageManager compatibility
 
 ### Notes
 - Based on upstream [YasserNull/shappky](https://github.com/YasserNull/shappky) `2.0.0`
 - HyperOS: if `adb install` fails with `INSTALL_FAILED_USER_RESTRICTED: Invalid apk` and log shows `Unknown authority guard`, restore MIUI Guard Provider: `adb shell cmd package install-existing com.miui.guardprovider`
-- Build uses `compileSdk = 36` (not 36.1) for broader PackageManager compatibility
 
 ---
 

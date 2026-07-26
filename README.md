@@ -1,25 +1,28 @@
 # Shappky Async
 
-**Kill background apps your way — side-by-side with stock Shappky.**
+**Kill background apps your way — install side-by-side with stock Shappky.**
 
-Fork of [YasserNull/shappky](https://github.com/YasserNull/shappky)
+Personal fork of [YasserNull/shappky](https://github.com/YasserNull/shappky) (Shell App Killer).
 
-[![Version](https://img.shields.io/badge/version-2.0.2--async-1B6CA8)](#)
+[![Version](https://img.shields.io/badge/version-34.52.03--async-1B6CA8)](#)
 [![Package](https://img.shields.io/badge/id-com.shams.srk.shappky-39FF14)](#)
 [![Min SDK](https://img.shields.io/badge/minSdk-24-blue)](#)
 [![License](https://img.shields.io/badge/license-GPL--3.0-lightgrey)](LICENSE)
 
 ---
 
-## Why Shappky Async?
+## What’s different in this fork?
 
-| | |
-|---|---|
-| **Side-by-side** | Install next to stock Shappky (`com.shams.srk.shappky`) |
-| **Same core** | Force-stop / kill via **Shizuku** or **Root** |
-| **Personal fork** | Features added here for daily use (see [CHANGELOG](CHANGELOG.md)) |
+| Change | Detail |
+|--------|--------|
+| **Own package id** | `com.shams.srk.shappky` — runs next to stock Shappky without uninstalling it |
+| **App name** | **Shappky Async** |
+| **Version scheme** | `34.52.<revision>-async` (revision bumps with fork feature pushes) |
+| **Protected apps UX** | **Select all / Unselect all** on the current filtered list (toolbar + ⋮ menu) |
+| **Kill protection** | Unified protected checks on all kill paths (list, widgets, triggers, filters) — no `am kill-all` bypass |
+| **HyperOS-friendly builds** | `compileSdk = 36` (not 36.1) so PackageManager can parse the APK on more devices |
 
-Upstream Shappky (Shell App Killer) stops background apps to free RAM and reduce heat. This fork keeps that behavior and adds personal improvements over time.
+Full history: [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
@@ -29,28 +32,35 @@ Upstream Shappky (Shell App Killer) stops background apps to free RAM and reduce
 |---|---|
 | App name | **Shappky Async** |
 | Package | `com.shams.srk.shappky` |
-| Version | `2.0.2-async` |
+| Version | `34.52.03-async` |
 | Kotlin packages | `com.yassernull.shappky` (unchanged; only `applicationId` differs) |
+| Upstream | [YasserNull/shappky](https://github.com/YasserNull/shappky) |
+
+---
+
+## What Shappky does
+
+Stops / force-stops background apps (via **Shizuku** or **Root**) to free RAM and cut heat. Upstream already includes:
+
+- Flexible permission mode (Shizuku / Root)
+- Filter & protect apps; kill FAB
+- Quick Settings tile + background service
+- Triggers, home-screen widgets, Tasker / intents
+
+This fork keeps that core and layers personal fixes and UX on top.
 
 ---
 
 ## Build & install (USB ADB)
 
-Requirements: JDK 17, Android SDK, device with USB debugging.
+**Requirements:** JDK 17, Android SDK, USB debugging on the device.
 
 ```powershell
 .\gradlew :app:assembleArm64-v8aDebug
-adb install -r app\build\outputs\apk\arm64-v8a\debug\app-arm64-v8a-debug.apk
+adb install -r app\build\outputs\apk\arm64-v8a\debug\Shappky-v34.52.03-async-debug-arm64-v8a.apk
 ```
 
-If HyperOS returns `INSTALL_FAILED_USER_RESTRICTED: Invalid apk` (guard provider missing):
-
-```powershell
-adb shell cmd package install-existing com.miui.guardprovider
-adb install -r app\build\outputs\apk\arm64-v8a\debug\app-arm64-v8a-debug.apk
-```
-
-Universal ABI (slower / larger):
+Universal ABI (larger / slower):
 
 ```powershell
 .\gradlew :app:assembleUniversalDebug
@@ -58,13 +68,30 @@ Universal ABI (slower / larger):
 
 Grant **Shizuku** (or Root) when prompted. Smoke-check: list running apps → kill one → open Settings.
 
+### HyperOS note
+
+If install fails with `INSTALL_FAILED_USER_RESTRICTED: Invalid apk` and logs mention `Unknown authority guard`, restore MIUI Guard Provider, then reinstall:
+
+```powershell
+adb shell cmd package install-existing com.miui.guardprovider
+adb install -r app\build\outputs\apk\arm64-v8a\debug\Shappky-v34.52.03-async-debug-arm64-v8a.apk
+```
+
+Guard Provider is mainly needed for the HyperOS install scan — not required to run the app afterward.
+
 ---
 
-## Upstream features (inherited)
+## Versioning
 
-- Flexible permissions: Shizuku or Root
-- Filter / protect apps; kill FAB; Quick Tile + background service
-- Triggers, widgets, Tasker / intents (upstream v2)
+Format: **`34.52.<revision>-async`**
+
+| Piece | Meaning |
+|-------|---------|
+| `34.52` | Fixed major.minor for this fork line |
+| `<revision>` | Feature / push revision on this fork |
+| `-async` | Fork suffix |
+
+`versionCode` is encoded as `3452xx` (e.g. `34.52.03-async` → `345203`). Debug builds append `-debug` to the version name.
 
 ---
 

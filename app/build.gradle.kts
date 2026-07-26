@@ -13,13 +13,13 @@ android {
   compileSdk = 36
 
   defaultConfig {
-    // Side-by-side with stock Shappky (same pattern as Hail Async)
+    // Side-by-side with stock Shappky
     applicationId = "com.shams.srk.shappky"
     minSdk = 24
     targetSdk = 36
-    // Format: 2.0.<revision>-async  (revision = feature pushes on this fork)
-    versionCode = 20002
-    versionName = "2.0.2-async"
+    // Format: 34.52.<revision>-async  (revision = feature pushes/commits on this fork)
+    versionCode = 345203
+    versionName = "34.52.03-async"
     multiDexEnabled = true
   }
 
@@ -57,10 +57,19 @@ android {
   buildTypes {
     debug {
       signingConfig = signingConfigs.getByName("debug")
+      versionNameSuffix = "-debug"
     }
     release {
       isMinifyEnabled = true
       isShrinkResources = true
+    }
+  }
+
+  applicationVariants.configureEach {
+    val variant = this
+    outputs.configureEach {
+      (this as? com.android.build.gradle.internal.api.ApkVariantOutputImpl)?.outputFileName =
+        "Shappky-v${variant.versionName}-${variant.flavorName}.apk"
     }
   }
 
