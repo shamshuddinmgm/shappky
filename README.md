@@ -4,7 +4,7 @@
 
 Fork of [YasserNull/shappky](https://github.com/YasserNull/shappky)
 
-[![Version](https://img.shields.io/badge/version-2.0.0--async-1B6CA8)](#)
+[![Version](https://img.shields.io/badge/version-2.0.2--async-1B6CA8)](#)
 [![Package](https://img.shields.io/badge/id-com.shams.srk.shappky-39FF14)](#)
 [![Min SDK](https://img.shields.io/badge/minSdk-24-blue)](#)
 [![License](https://img.shields.io/badge/license-GPL--3.0-lightgrey)](LICENSE)
@@ -29,7 +29,7 @@ Upstream Shappky (Shell App Killer) stops background apps to free RAM and reduce
 |---|---|
 | App name | **Shappky Async** |
 | Package | `com.shams.srk.shappky` |
-| Version | `2.0.0-async` |
+| Version | `2.0.2-async` |
 | Kotlin packages | `com.yassernull.shappky` (unchanged; only `applicationId` differs) |
 
 ---

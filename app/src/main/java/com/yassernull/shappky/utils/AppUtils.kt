@@ -36,7 +36,6 @@ fun Context.loadAllApps(callback: (List<AppModel>) -> Unit) {
   if (!executor.isShutdown) {
     executor.execute {
       val pm = packageManager
-      val protectedApps = ProtectionManager.getProtectedApps(this)
       val packages = pm.getInstalledApplications(PackageManager.GET_META_DATA)
       val allApps = mutableListOf<AppModel>()
       for (appInfo in packages) {
@@ -45,7 +44,7 @@ fun Context.loadAllApps(callback: (List<AppModel>) -> Unit) {
         val isPersistent = appInfo.flags and ApplicationInfo.FLAG_PERSISTENT != 0
         val label = pm.getApplicationLabel(appInfo).toString()
         val pkg = appInfo.packageName
-        val isProtected = pkg == packageName || protectedApps.contains(pkg)
+        val isProtected = ProtectionManager.isProtected(this@loadAllApps, pkg)
 
         allApps.add(
           AppModel(
@@ -61,8 +60,10 @@ fun Context.loadAllApps(callback: (List<AppModel>) -> Unit) {
         )
       }
       allApps.sortWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.appName })
-      handler.post { callback(allApps) }
-      executor.shutdown()
+      handler.post {
+        callback(allApps)
+        executor.shutdown()
+      }
     }
   }
 }

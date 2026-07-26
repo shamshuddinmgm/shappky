@@ -16,6 +16,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -68,6 +69,16 @@ fun ProtectedAppsDialog(
   var isMenuExpanded by remember { mutableStateOf(false) }
 
   val androidPackages = remember(allApps.size) { getAndroidPackages(allApps) }
+  val widgetShellHandler = remember { android.os.Handler(android.os.Looper.getMainLooper()) }
+  val widgetShellExecutor = remember { Executors.newSingleThreadExecutor() }
+  val widgetShellManager = remember { ShellManager(context, widgetShellHandler, widgetShellExecutor) }
+
+  DisposableEffect(Unit) {
+    onDispose {
+      widgetShellManager.removeShizukuPermissionListener()
+      widgetShellExecutor.shutdown()
+    }
+  }
 
   fun togglePackage(pkg: String) {
     selectedPackages = if (selectedPackages.contains(pkg)) {
@@ -85,11 +96,7 @@ fun ProtectedAppsDialog(
       isLoading = false
       selectedPackages = applyRegexToSelectedPackages(regexText, allApps, selectedPackages)
     }
-
-    val handler = android.os.Handler(android.os.Looper.getMainLooper())
-    val executor = Executors.newSingleThreadExecutor()
-    val shellManager = ShellManager(context, handler, executor)
-    activeWidgetPackages = context.collectActiveWidgetPackages(shellManager)
+    activeWidgetPackages = context.collectActiveWidgetPackages(widgetShellManager)
   }
 
   LaunchedEffect(regexText) {
@@ -105,6 +112,26 @@ fun ProtectedAppsDialog(
     title = { Text(stringResource(R.string.protected_apps_list_title)) },
     text = {
       Column(modifier = Modifier.height(460.dp)) {
+        val filtered = if (isLoading) {
+          emptyList()
+        } else {
+          allApps.filter { app ->
+            val matchesQuery = app.appName.contains(query, ignoreCase = true) ||
+              app.packageName.contains(query, ignoreCase = true)
+            var matchesFilter = false
+            if (app.isPersistentApp && showPersistentApps) {
+              matchesFilter = true
+            } else if (app.isSystemApp && !app.isPersistentApp && showSystemApps) {
+              matchesFilter = true
+            } else if (!app.isSystemApp && showUserApps) {
+              matchesFilter = true
+            }
+            matchesQuery && matchesFilter
+          }
+        }
+        val visiblePackages = filtered.map { it.packageName }.toSet()
+        val hasVisibleSelection = visiblePackages.any { selectedPackages.contains(it) }
+
         ProtectedAppsSearchBar(
           query = query,
           onQueryChange = { query = it },
@@ -117,6 +144,17 @@ fun ProtectedAppsDialog(
           isMenuExpanded = isMenuExpanded,
           onToggleMenu = { isMenuExpanded = true },
           onDismissMenu = { isMenuExpanded = false },
+          hasVisibleSelection = hasVisibleSelection,
+          onSelectAllVisible = {
+            if (visiblePackages.isNotEmpty()) {
+              selectedPackages = selectedPackages + visiblePackages
+            }
+          },
+          onDeselectAllVisible = {
+            if (visiblePackages.isNotEmpty()) {
+              selectedPackages = selectedPackages - visiblePackages
+            }
+          },
         )
         Spacer(Modifier.height(8.dp))
 
@@ -133,18 +171,6 @@ fun ProtectedAppsDialog(
           val widgetsChecked = activeWidgetPackages.isNotEmpty() && activeWidgetPackages.all { selectedPackages.contains(it) }
           val googleAndroidServicesChecked = googleAndroidPackages.isNotEmpty() && googleAndroidPackages.all { selectedPackages.contains(it) }
           val androidServicesChecked = androidPackages.isNotEmpty() && androidPackages.all { selectedPackages.contains(it) }
-          val filtered = allApps.filter { app ->
-            val matchesQuery = app.appName.contains(query, ignoreCase = true) || app.packageName.contains(query, ignoreCase = true)
-            var matchesFilter = false
-            if (app.isPersistentApp && showPersistentApps) {
-              matchesFilter = true
-            } else if (app.isSystemApp && !app.isPersistentApp && showSystemApps) {
-              matchesFilter = true
-            } else if (!app.isSystemApp && showUserApps) {
-              matchesFilter = true
-            }
-            matchesQuery && matchesFilter
-          }
 
           LazyColumn {
             item {

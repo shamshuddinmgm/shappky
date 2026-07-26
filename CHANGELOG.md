@@ -6,6 +6,24 @@ Version format: **`2.0.<revision>-async`**
 
 ---
 
+## [2.0.2-async] — 2026-07-27
+
+### Fixed (protection audit)
+- Unified `ProtectionManager.isProtected()` (self + set + regex) across kill paths, including `AppModelFilter`
+- Removed `am kill-all` bypass that ignored protected apps
+- List widget + trigger widget kills respect protected apps and clean up ShellManager
+- Service / triggers no longer hardcode old package id `com.yassernull.shappky`
+- SharedPreferences StringSet copied on read/write; Xiaomi/Redmi/POCO default regex
+- Protected apps dialog shuts down widget ShellManager on dismiss
+
+### Added (2.0.1)
+- Protected apps list: **Select all** / **Unselect all** for the current filtered list (toolbar icon + ⋮ menu)
+
+## [2.0.1-async] — 2026-07-26
+
+### Added
+- Protected apps list: **Select all** / **Unselect all** for the current filtered list (toolbar icon + ⋮ menu)
+
 ## [2.0.0-async] — 2026-07-26
 
 ### Identity
@@ -16,7 +34,6 @@ Version format: **`2.0.<revision>-async`**
 
 ### Notes
 - Based on upstream [YasserNull/shappky](https://github.com/YasserNull/shappky) `2.0.0`
-- Feature work starts after device smoke test; list asks before coding
 - HyperOS: if `adb install` fails with `INSTALL_FAILED_USER_RESTRICTED: Invalid apk` and log shows `Unknown authority guard`, restore MIUI Guard Provider: `adb shell cmd package install-existing com.miui.guardprovider`
 - Build uses `compileSdk = 36` (not 36.1) for broader PackageManager compatibility
 

@@ -12,6 +12,7 @@ import android.widget.RemoteViews
 import android.widget.Toast
 import com.yassernull.shappky.R
 import com.yassernull.shappky.core.managers.BackgroundAppManager
+import com.yassernull.shappky.core.managers.ProtectionManager
 import com.yassernull.shappky.core.managers.ShellManager
 import com.yassernull.shappky.core.managers.TriggerManager
 import com.yassernull.shappky.core.preferences.PREFERENCES_NAME
@@ -126,17 +127,22 @@ class ShappkyWidgetProvider : AppWidgetProvider() {
       val matchesManual = trigger.manuallySelectedApps.contains(app.packageName)
       val isExcluded = trigger.excludedApps.contains(app.packageName)
 
-      (matchesUser || matchesSystem || matchesPersistent || matchesManual) && !isExcluded && !app.isProtected
+      (matchesUser || matchesSystem || matchesPersistent || matchesManual) &&
+        !isExcluded &&
+        !ProtectionManager.isProtected(context, app.packageName)
     }
 
     if (toKill.isNotEmpty()) {
       val totalKb = toKill.sumOf { it.ramKb }
-      val command = toKill.map { it.packageName }.joinToString("; ") { "am force-stop $it" }
       val killLatch = CountDownLatch(1)
 
-      shellManager.runShellCommand(command) {
-        killLatch.countDown()
-      }
+      appManager.killPackages(
+        toKill.map { it.packageName },
+        {
+          killLatch.countDown()
+        },
+        showToast = false,
+      )
       killLatch.await()
 
       val freedText = context.getString(R.string.free_up_memory, appManager.formatMemorySize(totalKb))
@@ -147,6 +153,7 @@ class ShappkyWidgetProvider : AppWidgetProvider() {
       }
     }
 
+    shellManager.removeShizukuPermissionListener()
     shellExecutor.shutdown()
 
     val appWidgetManager = AppWidgetManager.getInstance(context)

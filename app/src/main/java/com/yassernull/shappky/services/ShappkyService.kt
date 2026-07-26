@@ -17,6 +17,7 @@ import android.os.Looper
 import android.service.quicksettings.TileService
 import androidx.core.app.NotificationCompat
 import com.yassernull.shappky.R
+import com.yassernull.shappky.core.managers.ProtectionManager
 import com.yassernull.shappky.core.managers.ShellManager
 import java.io.BufferedReader
 import java.io.IOException
@@ -229,8 +230,8 @@ class ShappkyService : Service() {
 
   private fun isProtected(
     packageName: String,
-    protectedApps: Set<String>,
-  ): Boolean = packageName == "com.yassernull.shappky" || protectedApps.contains(packageName)
+    @Suppress("UNUSED_PARAMETER") protectedApps: Set<String>,
+  ): Boolean = ProtectionManager.isProtected(this, packageName)
 
   override fun onDestroy() {
     setRunningState(false)

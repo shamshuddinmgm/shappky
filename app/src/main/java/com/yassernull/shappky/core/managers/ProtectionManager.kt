@@ -20,7 +20,7 @@ object ProtectionManager {
     if (sharedPrefs.contains(KEY_PROTECTED_APPS)) {
       val savedSet = sharedPrefs.getStringSet(KEY_PROTECTED_APPS, null)
       if (savedSet != null) {
-        return savedSet
+        return HashSet(savedSet)
       }
     }
     return getDefaultProtectedApps(context)
@@ -28,7 +28,7 @@ object ProtectionManager {
 
   fun saveProtectedApps(context: Context, apps: Set<String>) {
     val sharedPrefs = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
-    sharedPrefs.edit().putStringSet(KEY_PROTECTED_APPS, apps).apply()
+    sharedPrefs.edit().putStringSet(KEY_PROTECTED_APPS, HashSet(apps)).apply()
     Log.d(TAG, "Saved protected apps count=${apps.size}")
   }
 
@@ -38,8 +38,14 @@ object ProtectionManager {
       return sharedPrefs.getString(KEY_PROTECTED_REGEX, "") ?: ""
     }
 
-    val isXiaomi = android.os.Build.MANUFACTURER.equals("Xiaomi", ignoreCase = true)
-    return if (isXiaomi) {
+    val manufacturer = Build.MANUFACTURER
+    val brand = Build.BRAND
+    val isXiaomiFamily = listOf(manufacturer, brand).any {
+      it.equals("Xiaomi", ignoreCase = true) ||
+        it.equals("Redmi", ignoreCase = true) ||
+        it.equals("POCO", ignoreCase = true)
+    }
+    return if (isXiaomiFamily) {
       "com.miui.*|com.xiaomi.*|com.lbe.security.miui"
     } else {
       ""
@@ -49,6 +55,14 @@ object ProtectionManager {
   fun saveProtectedRegex(context: Context, regex: String) {
     val sharedPrefs = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
     sharedPrefs.edit().putString(KEY_PROTECTED_REGEX, regex).apply()
+  }
+
+  /** True if package must never be killed (self, protected set, or regex). */
+  fun isProtected(context: Context, packageName: String): Boolean {
+    if (packageName.isEmpty()) return true
+    if (packageName == context.packageName) return true
+    if (getProtectedApps(context).contains(packageName)) return true
+    return isAppProtectedByRegex(context, packageName)
   }
 
   fun isAppProtectedByRegex(context: Context, packageName: String): Boolean {

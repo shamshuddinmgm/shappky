@@ -18,8 +18,8 @@ android {
     minSdk = 24
     targetSdk = 36
     // Format: 2.0.<revision>-async  (revision = feature pushes on this fork)
-    versionCode = 20000
-    versionName = "2.0.0-async"
+    versionCode = 20002
+    versionName = "2.0.2-async"
     multiDexEnabled = true
   }
 

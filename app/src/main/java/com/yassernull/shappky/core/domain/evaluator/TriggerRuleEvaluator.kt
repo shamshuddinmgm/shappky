@@ -324,7 +324,6 @@ class TriggerRuleEvaluator(
     now: Long,
   ) {
     val pm = context.packageManager
-    val protectedApps = ProtectionManager.getProtectedApps(context)
     val isShappkyServiceRunning = ShappkyService.isRunning()
     val appManager = BackgroundAppManager(context, handler, executor, shellManager)
 
@@ -340,7 +339,7 @@ class TriggerRuleEvaluator(
       val manuallySelectedApps = trigger.manuallySelectedApps
 
       val candidatePackages = runningPackages.filter { pkg ->
-        if (pkg == "com.yassernull.shappky" || protectedApps.contains(pkg) || excludedApps.contains(pkg)) return@filter false
+        if (ProtectionManager.isProtected(context, pkg) || excludedApps.contains(pkg)) return@filter false
         val matchesManual = manuallySelectedApps.contains(pkg)
         if (matchesManual) return@filter true
         if (manuallySelectedApps.isNotEmpty()) return@filter false
@@ -407,7 +406,7 @@ class TriggerRuleEvaluator(
       }
     }
 
-    val candidatePackagesForServiceRules = runningPackages.filter { it != "com.yassernull.shappky" }
+    val candidatePackagesForServiceRules = runningPackages.filter { !ProtectionManager.isProtected(context, it) }
 
     if (isShappkyServiceRunning && disableRules.isNotEmpty()) {
       val inactivityDisableRules = disableRules.filter { it.type == RuleType.APP_INACTIVITY }
@@ -457,13 +456,12 @@ class TriggerRuleEvaluator(
     if (autoStartedPackages.isEmpty()) return
 
     val pm = context.packageManager
-    val protectedApps = ProtectionManager.getProtectedApps(context)
 
     for (trigger in triggers) {
       val bgRules = trigger.rules.filter { it.type == RuleType.APP_BACKGROUND_STARTED }
       if (bgRules.isEmpty()) continue
       val matchingPackages = autoStartedPackages.filter { pkg ->
-        if (pkg == context.packageName || protectedApps.contains(pkg) || trigger.excludedApps.contains(pkg)) return@filter false
+        if (ProtectionManager.isProtected(context, pkg) || trigger.excludedApps.contains(pkg)) return@filter false
         if (trigger.manuallySelectedApps.contains(pkg)) return@filter true
         if (trigger.manuallySelectedApps.isNotEmpty()) return@filter false
         try {

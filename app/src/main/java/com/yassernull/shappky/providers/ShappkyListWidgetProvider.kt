@@ -47,22 +47,38 @@ class ShappkyListWidgetProvider : AppWidgetProvider() {
       val appName = intent.getStringExtra("app_name") ?: ""
       val appRam = intent.getStringExtra("app_ram") ?: ""
       if (!packageName.isNullOrEmpty()) {
+        if (com.yassernull.shappky.core.managers.ProtectionManager.isProtected(context, packageName)) {
+          Toast.makeText(context, context.getString(R.string.force_kill_protected_message), Toast.LENGTH_SHORT).show()
+          return
+        }
         val handler = android.os.Handler(android.os.Looper.getMainLooper())
         val shellExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
         val shellManager = ShellManager(context, handler, shellExecutor)
+        fun cleanupShell() {
+          shellManager.removeShizukuPermissionListener()
+          shellExecutor.shutdown()
+        }
         if (shellManager.hasAnyShellPermission()) {
-          shellManager.runShellCommand("am force-stop $packageName") {
-            val localCtx = getLocalizedContext(context)
-            val message = localCtx.getString(R.string.free_up_memory, appRam)
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+          val killHandler = com.yassernull.shappky.core.managers.AppKillHandler(context, handler, shellManager)
+          killHandler.killApp(
+            packageName = packageName,
+            onComplete = {
+              cleanupShell()
+              val localCtx = getLocalizedContext(context)
+              val message = localCtx.getString(R.string.free_up_memory, appRam)
+              Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
 
-            @Suppress("DEPRECATION")
-            appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.widget_list_view)
-            for (id in appWidgetIds) {
-              updateAppWidget(context, appWidgetManager, id)
-            }
-          }
+              @Suppress("DEPRECATION")
+              appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.widget_list_view)
+              for (id in appWidgetIds) {
+                updateAppWidget(context, appWidgetManager, id)
+              }
+            },
+            getAppRamKb = { 0L },
+            formatMemorySize = { appRam },
+          )
         } else {
+          cleanupShell()
           Toast.makeText(context, context.getString(R.string.shell_permission_required), Toast.LENGTH_SHORT).show()
         }
       }
