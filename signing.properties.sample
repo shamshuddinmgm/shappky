@@ -1,0 +1,11 @@
+# Copy this file to signing.properties (repo root) and fill in real values.
+# signing.properties and *.jks / *.keystore are gitignored — never commit them.
+#
+# storeFile is relative to the app/ module directory.
+# Example: keystore in the repo root → ../shappky-async-release.jks
+# Or reuse your existing Async release keystore path.
+
+storeFile=../shappky-async-release.jks
+storePassword=CHANGE_ME
+keyAlias=shappky-async
+keyPassword=CHANGE_ME

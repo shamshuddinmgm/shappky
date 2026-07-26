@@ -7,6 +7,8 @@ plugins {
 }
 
 android {
+  val signingProps = file("../signing.properties")
+
   namespace = "com.yassernull.shappky"
   // HyperOS PackageManager fails to parse APKs built against compileSdk 36.1
   // (AdbInstallActivity: parsePackage is null → Invalid apk). Match Hail: API 36.
@@ -18,8 +20,8 @@ android {
     minSdk = 24
     targetSdk = 36
     // Format: 34.52.<revision>-async  (revision = feature pushes/commits on this fork)
-    versionCode = 345203
-    versionName = "34.52.03-async"
+    versionCode = 345204
+    versionName = "34.52.04-async"
     multiDexEnabled = true
   }
 
@@ -62,14 +64,17 @@ android {
     release {
       isMinifyEnabled = true
       isShrinkResources = true
-    }
-  }
-
-  applicationVariants.configureEach {
-    val variant = this
-    outputs.configureEach {
-      (this as? com.android.build.gradle.internal.api.ApkVariantOutputImpl)?.outputFileName =
-        "Shappky-v${variant.versionName}-${variant.flavorName}.apk"
+      signingConfig = if (signingProps.exists()) {
+        val props = `java.util`.Properties().apply { load(signingProps.reader()) }
+        signingConfigs.create("release") {
+          storeFile = file(props.getProperty("storeFile"))
+          storePassword = props.getProperty("storePassword")
+          keyAlias = props.getProperty("keyAlias")
+          keyPassword = props.getProperty("keyPassword")
+        }
+      } else {
+        error("Missing signing.properties — copy signing.properties.sample and fill in your release keystore.")
+      }
     }
   }
 

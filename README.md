@@ -4,7 +4,7 @@
 
 Personal fork of [YasserNull/shappky](https://github.com/YasserNull/shappky) (Shell App Killer).
 
-[![Version](https://img.shields.io/badge/version-34.52.03--async-1B6CA8)](#)
+[![Version](https://img.shields.io/badge/version-34.52.04--async-1B6CA8)](#)
 [![Package](https://img.shields.io/badge/id-com.shams.srk.shappky-39FF14)](#)
 [![Min SDK](https://img.shields.io/badge/minSdk-24-blue)](#)
 [![License](https://img.shields.io/badge/license-GPL--3.0-lightgrey)](LICENSE)
@@ -21,6 +21,7 @@ Personal fork of [YasserNull/shappky](https://github.com/YasserNull/shappky) (Sh
 | **Protected apps UX** | **Select all / Unselect all** on the current filtered list (toolbar + ⋮ menu) |
 | **Kill protection** | Unified protected checks on all kill paths (list, widgets, triggers, filters) — no `am kill-all` bypass |
 | **HyperOS-friendly builds** | `compileSdk = 36` (not 36.1) so PackageManager can parse the APK on more devices |
+| **Release signing** | Release APKs use a dedicated release keystore (`signing.properties` local only) |
 
 Full history: [CHANGELOG.md](CHANGELOG.md)
 
@@ -32,7 +33,7 @@ Full history: [CHANGELOG.md](CHANGELOG.md)
 |---|---|
 | App name | **Shappky Async** |
 | Package | `com.shams.srk.shappky` |
-| Version | `34.52.03-async` |
+| Version | `34.52.04-async` |
 | Kotlin packages | `com.yassernull.shappky` (unchanged; only `applicationId` differs) |
 | Upstream | [YasserNull/shappky](https://github.com/YasserNull/shappky) |
 
@@ -57,7 +58,7 @@ This fork keeps that core and layers personal fixes and UX on top.
 
 ```powershell
 .\gradlew :app:assembleArm64-v8aDebug
-adb install -r app\build\outputs\apk\arm64-v8a\debug\Shappky-v34.52.03-async-debug-arm64-v8a.apk
+adb install -r app\build\outputs\apk\arm64-v8a\debug\app-arm64-v8a-debug.apk
 ```
 
 Universal ABI (larger / slower):
@@ -74,7 +75,7 @@ If install fails with `INSTALL_FAILED_USER_RESTRICTED: Invalid apk` and logs men
 
 ```powershell
 adb shell cmd package install-existing com.miui.guardprovider
-adb install -r app\build\outputs\apk\arm64-v8a\debug\Shappky-v34.52.03-async-debug-arm64-v8a.apk
+adb install -r app\build\outputs\apk\arm64-v8a\debug\app-arm64-v8a-debug.apk
 ```
 
 Guard Provider is mainly needed for the HyperOS install scan — not required to run the app afterward.

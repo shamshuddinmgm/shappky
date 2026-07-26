@@ -1,6 +1,9 @@
 .gradle/
 .kotlin/
 local.properties
+signing.properties
+*.jks
+*.keystore
 gradle/gradle-daemon-jvm.properties
 build/
 */build

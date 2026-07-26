@@ -6,12 +6,19 @@ Version format: **`34.52.<revision>-async`** (`versionCode` = `3452xx`)
 
 ---
 
+## [34.52.04-async] — 2026-07-27
+
+### Changed
+- Release APKs signed with the **dedicated Async release keystore** (not the debug key)
+- Signature change vs earlier debug-signed builds — uninstall before upgrading
+
+---
+
 ## [34.52.03-async] — 2026-07-27
 
 ### Changed
 - Aligned fork versioning with preferred scheme: **`34.52.xx-async`** (replaces temporary `2.0.x-async`)
 - Debug builds append `-debug` to `versionName`
-- APK output named `Shappky-v<versionName>-<abi>.apk`
 
 ### Docs
 - GitHub README rewritten for fork identity, what’s new, build/install, HyperOS note
