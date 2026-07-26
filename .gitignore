@@ -5,3 +5,7 @@ gradle/gradle-daemon-jvm.properties
 build/
 */build
 **/build
+tmp-apk/
+*.apk.orig
+*.aligned
+*.orig

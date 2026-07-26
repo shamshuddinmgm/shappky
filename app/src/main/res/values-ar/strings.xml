@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">شابكي</string>
-    <string name="app_name_en">Shappky</string>
-    <string name="app_name_ar">شابكي</string>
+    <string name="app_name">شابكي Async</string>
+    <string name="app_name_en">Shappky Async</string>
+    <string name="app_name_ar">شابكي Async</string>
     <string name="kb_format">%1$d ك.ب</string>
     <string name="mb_format">%1$.2f م.ب</string>
     <string name="gb_format">%1$.2f ج.ب</string>

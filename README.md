@@ -1,40 +1,75 @@
-# Shappky
-![Logo](https://github.com/YasserNull/shappky/blob/main/docs/images/logo.png)
-<p align="center">
-  <img src="https://img.shields.io/github/downloads/YasserNull/shappky/total?label=Downloads"/>
-  <img src="https://img.shields.io/github/v/release/YasserNull/shappky?include_prereleases&label=Release"/>
-  <img src="https://img.shields.io/badge/License-GPLv3-blue.svg"/>
-</p>
+# Shappky Async
 
-## What is Shappky?
-Shappky, short for Shell App Killer, is an app that stops background applications using either Shizuku or Root permissions, improving device performance, reducing memory usage, and lowering heat in a lightweight and safe way.
-## Features
-- **Flexible Permissions**: Works with either Shizuku or Root access.
-- **Simplified User Interface**: Practical and easy-to-use design.
-- **Fast Performance**: Stops applications with high efficiency.
-- **Select System Apps**: Ability to choose system apps for termination.
-- **Select Specific Apps**: Choose which apps to stop based on user preference.
-- **Security**: Certain apps are protected from being stopped by developers and appear in gray.
-- **Background Service**: A background service that automatically kills unused apps when activated via Quick Tile.
+**Kill background apps your way — side-by-side with stock Shappky.**
 
-## Screenshots
-<p align="center">
-  <img src="https://github.com/YasserNull/shappky/blob/main/docs/images/screenshot0.jpg" width="30%">
-  <img src="https://github.com/YasserNull/shappky/blob/main/docs/images/screenshot1.jpg" width="30%">
-  <img src="https://github.com/YasserNull/shappky/blob/main/docs/images/screenshot2.jpg" width="30%">
-</p>
+Fork of [YasserNull/shappky](https://github.com/YasserNull/shappky)
 
-## Requirements
-- **Android Version**: 6.0 or higher.
-- **Shizuku or Root**: Shappky needs Root or Shizuku permission to work.
-## Installation
-You can download and install Shappky via one of the following methods:
-**GitHub Releases**: Download the latest APK from the [Releases page](https://github.com/YasserNull/shappky/releases).
+[![Version](https://img.shields.io/badge/version-2.0.0--async-1B6CA8)](#)
+[![Package](https://img.shields.io/badge/id-com.shams.srk.shappky-39FF14)](#)
+[![Min SDK](https://img.shields.io/badge/minSdk-24-blue)](#)
+[![License](https://img.shields.io/badge/license-GPL--3.0-lightgrey)](LICENSE)
+
+---
+
+## Why Shappky Async?
+
+| | |
+|---|---|
+| **Side-by-side** | Install next to stock Shappky (`com.shams.srk.shappky`) |
+| **Same core** | Force-stop / kill via **Shizuku** or **Root** |
+| **Personal fork** | Features added here for daily use (see [CHANGELOG](CHANGELOG.md)) |
+
+Upstream Shappky (Shell App Killer) stops background apps to free RAM and reduce heat. This fork keeps that behavior and adds personal improvements over time.
+
+---
+
+## Identity
+
+| | |
+|---|---|
+| App name | **Shappky Async** |
+| Package | `com.shams.srk.shappky` |
+| Version | `2.0.0-async` |
+| Kotlin packages | `com.yassernull.shappky` (unchanged; only `applicationId` differs) |
+
+---
+
+## Build & install (USB ADB)
+
+Requirements: JDK 17, Android SDK, device with USB debugging.
+
+```powershell
+.\gradlew :app:assembleArm64-v8aDebug
+adb install -r app\build\outputs\apk\arm64-v8a\debug\app-arm64-v8a-debug.apk
+```
+
+If HyperOS returns `INSTALL_FAILED_USER_RESTRICTED: Invalid apk` (guard provider missing):
+
+```powershell
+adb shell cmd package install-existing com.miui.guardprovider
+adb install -r app\build\outputs\apk\arm64-v8a\debug\app-arm64-v8a-debug.apk
+```
+
+Universal ABI (slower / larger):
+
+```powershell
+.\gradlew :app:assembleUniversalDebug
+```
+
+Grant **Shizuku** (or Root) when prompted. Smoke-check: list running apps → kill one → open Settings.
+
+---
+
+## Upstream features (inherited)
+
+- Flexible permissions: Shizuku or Root
+- Filter / protect apps; kill FAB; Quick Tile + background service
+- Triggers, widgets, Tasker / intents (upstream v2)
+
+---
+
 ## License
-Shappky is licensed under the [GNU General Public License v3.0](LICENSE).
 
-## Donate
+Shappky Async is licensed under the [GNU General Public License v3.0](LICENSE), same as upstream.
 
-If you want to support me, I would be very grateful. 
-
-[**PayPal**](https://www.paypal.com/ncp/payment/7X44EWSM9KAVW)
+Upstream author donations: [PayPal](https://www.paypal.com/ncp/payment/7X44EWSM9KAVW)

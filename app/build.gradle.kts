@@ -8,18 +8,18 @@ plugins {
 
 android {
   namespace = "com.yassernull.shappky"
-  compileSdk {
-    version = release(36) {
-      minorApiLevel = 1
-    }
-  }
+  // HyperOS PackageManager fails to parse APKs built against compileSdk 36.1
+  // (AdbInstallActivity: parsePackage is null → Invalid apk). Match Hail: API 36.
+  compileSdk = 36
 
   defaultConfig {
-    applicationId = "com.yassernull.shappky"
+    // Side-by-side with stock Shappky (same pattern as Hail Async)
+    applicationId = "com.shams.srk.shappky"
     minSdk = 24
     targetSdk = 36
-    versionCode = 5
-    versionName = "2.0.0"
+    // Format: 2.0.<revision>-async  (revision = feature pushes on this fork)
+    versionCode = 20000
+    versionName = "2.0.0-async"
     multiDexEnabled = true
   }
 
@@ -47,7 +47,17 @@ android {
     }
   }
 
+  signingConfigs {
+    getByName("debug") {
+      enableV1Signing = true
+      enableV2Signing = true
+    }
+  }
+
   buildTypes {
+    debug {
+      signingConfig = signingConfigs.getByName("debug")
+    }
     release {
       isMinifyEnabled = true
       isShrinkResources = true

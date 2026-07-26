@@ -1,7 +1,7 @@
 <resources>
-    <string name="app_name">Shappky</string>
-    <string name="app_name_en">Shappky</string>
-    <string name="app_name_ar">شابكي</string>
+    <string name="app_name">Shappky Async</string>
+    <string name="app_name_en">Shappky Async</string>
+    <string name="app_name_ar">شابكي Async</string>
     <string name="kb_format">%1$d KB</string>
     <string name="mb_format">%1$.2f MB</string>
     <string name="gb_format">%1$.2f GB</string>
@@ -92,7 +92,7 @@
     <string name="donate_url" translatable="false">https://www.paypal.com/ncp/payment/7X44EWSM9KAVW</string>
     <string name="source_code">Source Code</string>
     <string name="source_code_summary">Open project repository</string>
-    <string name="source_code_url" translatable="false">https://github.com/YasserNull/shappky</string>
+    <string name="source_code_url" translatable="false">https://github.com/shamshuddinmgm/shappky</string>
     <string name="refresh">Refresh</string>
     <string name="more">More</string>
     <string name="select_all">Select all</string>
