@@ -14,7 +14,6 @@ class AppKillHandler(
     packageNames: List<String>?,
     onComplete: Runnable?,
     showToast: Boolean = true,
-    appendKillAll: Boolean = false,
     getAppRamKb: ((String) -> Long)? = null,
     formatMemorySize: (Long) -> String,
   ) {
@@ -41,8 +40,7 @@ class AppKillHandler(
       totalKb += getAppRamKb?.invoke(pkg) ?: 0L
     }
 
-    // Never append `am kill-all` — it bypasses the protected-apps filter.
-    val command = buildSmartKillCommand(safePackageNames, appendKillAll = false)
+    val command = buildSmartKillCommand(safePackageNames)
     shellManager.runShellCommand(command, onComplete)
     if (showToast) {
       val message = context.getString(R.string.free_up_memory, formatMemorySize(totalKb))
@@ -54,7 +52,6 @@ class AppKillHandler(
     packageName: String?,
     onComplete: Runnable?,
     forceKill: Boolean = false,
-    appendKillAll: Boolean = false,
     getAppRamKb: ((String) -> Long)? = null,
     formatMemorySize: (Long) -> String,
   ) {
@@ -73,7 +70,7 @@ class AppKillHandler(
       return
     }
 
-    val command = buildSmartKillCommand(listOf(packageName), appendKillAll = false)
+    val command = buildSmartKillCommand(listOf(packageName))
     shellManager.runShellCommand(command, onComplete)
     val ramKb = getAppRamKb?.invoke(packageName) ?: 0L
     if (ramKb > 0) {
@@ -83,14 +80,17 @@ class AppKillHandler(
   }
 
   companion object {
-    fun buildSmartKillCommand(packageNames: List<String>, @Suppress("UNUSED_PARAMETER") appendKillAll: Boolean = false): String {
+    fun buildSmartKillCommand(packageNames: List<String>): String {
       if (packageNames.isEmpty()) return ""
       val killCommands = packageNames.joinToString("; ") { "am kill " + it }
-      val forceStopCommands = packageNames.joinToString("; ") { "if pidof " + it + " > /dev/null; then am force-stop " + it + "; fi" }
-      val kill9Commands = packageNames.joinToString("; ") {
-        "pids=${'$'}(${ShellManager.TOYBOX_PATH} ps -A -o pid,name | grep '" + it + "' | grep -v '[-@]' | awk '{print ${'$'}1}'); if [ ! -z \"${'$'}pids\" ]; then kill -9 ${'$'}pids 2>/dev/null; fi"
+      val forceStopCommands = packageNames.joinToString("; ") {
+        "if pidof " + it + " > /dev/null; then am force-stop " + it + "; fi"
       }
-      // Never append `am kill-all` — it bypasses protected-apps filtering.
+      // Exact process name or pkg:service — never substring-match sibling packages.
+      val kill9Commands = packageNames.joinToString("; ") { pkg ->
+        "pids=${'$'}(${ShellManager.TOYBOX_PATH} ps -A -o pid,name | awk -v p='$pkg' '\$2==p || index(\$2, p \":\")==1 {print \$1}'); " +
+          "if [ ! -z \"${'$'}pids\" ]; then kill -9 ${'$'}pids 2>/dev/null; fi"
+      }
       return killCommands + "; sleep 0.2; " + forceStopCommands + "; sleep 0.2; " + kill9Commands
     }
   }

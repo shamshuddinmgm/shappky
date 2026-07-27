@@ -1,5 +1,6 @@
 package com.yassernull.shappky.services
 
+import android.app.ActivityManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -113,16 +114,18 @@ class ShappkyService : Service() {
 
     val selectUserApps = sharedpreferences.getBoolean("service_select_user_apps", true)
     val selectSystemApps = sharedpreferences.getBoolean("service_select_system_apps", false)
-    val serviceExcludedApps = sharedpreferences.getStringSet("service_excluded_apps", emptySet()) ?: emptySet()
-    val serviceManuallySelectedApps = sharedpreferences.getStringSet("service_manually_selected_apps", emptySet()) ?: emptySet()
+    val serviceExcludedApps = HashSet(sharedpreferences.getStringSet("service_excluded_apps", emptySet()) ?: emptySet())
+    val serviceManuallySelectedApps = HashSet(sharedpreferences.getStringSet("service_manually_selected_apps", emptySet()) ?: emptySet())
     val killAppOnRamLimit = sharedpreferences.getBoolean("service_kill_app_on_ram_limit", false)
     val killAppRamThreshold = sharedpreferences.getInt("service_kill_app_ram_threshold", 0)
 
-    val hiddenApps = sharedpreferences.getStringSet(KEY_HIDDEN_APPS, HashSet()) ?: HashSet()
+    val hiddenApps = HashSet(sharedpreferences.getStringSet(KEY_HIDDEN_APPS, emptySet()) ?: emptySet())
 
     val protectedApps = com.yassernull.shappky.core.managers.ProtectionManager.getProtectedApps(this)
 
-    val dumpOutput = shellManager.runShellCommandAndGetFullOutput("dumpsys activity activities") ?: return
+    val dumpOutput = shellManager.runShellCommandAndGetFullOutput(
+      "dumpsys activity activities | grep -E 'mResumedActivity|topResumedActivity|mFocusedApp|topActivity'",
+    ) ?: return
     val psOutput =
       shellManager.runShellCommandAndGetFullOutput("${com.yassernull.shappky.core.managers.ShellManager.TOYBOX_PATH} ps -A -o rss,name | grep '\\.' | grep -v '[-@]'")
         ?: return
@@ -159,7 +162,7 @@ class ShappkyService : Service() {
       try {
         if (
           isProtected(pkg, protectedApps) ||
-          dumpOutput.contains(pkg)
+          com.yassernull.shappky.utils.PackageMatchUtils.dumpContainsPackage(dumpOutput, pkg)
         ) {
           return@filter false
         }
@@ -213,8 +216,7 @@ class ShappkyService : Service() {
     }
 
     if (toKill.isNotEmpty()) {
-      val shouldKillAll = selectSystemApps || selectUserApps
-      val finalCommand = com.yassernull.shappky.core.managers.BackgroundAppManager.buildSmartKillCommand(toKill, shouldKillAll)
+      val finalCommand = com.yassernull.shappky.core.managers.BackgroundAppManager.buildSmartKillCommand(toKill)
       shellManager.runShellCommandAndGetFullOutput(finalCommand) ?: return
 
       val lines = toKill.map { pkg ->
@@ -236,6 +238,9 @@ class ShappkyService : Service() {
   override fun onDestroy() {
     setRunningState(false)
     requestTileUpdate()
+    if (::shellManager.isInitialized) {
+      shellManager.removeShizukuPermissionListener()
+    }
     super.onDestroy()
     executor.shutdownNow()
   }
@@ -283,6 +288,15 @@ class ShappkyService : Service() {
 
     @JvmStatic
     fun isRunning(): Boolean = isRunning
+
+    @JvmStatic
+    fun isRunning(context: Context): Boolean {
+      if (isRunning) return true
+      val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+      @Suppress("DEPRECATION")
+      return am.getRunningServices(Integer.MAX_VALUE)
+        .any { it.service.className == ShappkyService::class.java.name }
+    }
 
     @JvmStatic
     fun registerListener(listener: (Boolean) -> Unit) {

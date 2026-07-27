@@ -20,8 +20,8 @@ android {
     minSdk = 24
     targetSdk = 36
     // Format: 34.52.<revision>-async  (revision = feature pushes/commits on this fork)
-    versionCode = 345204
-    versionName = "34.52.04-async"
+    versionCode = 345206
+    versionName = "34.52.06-async"
     multiDexEnabled = true
   }
 
@@ -75,6 +75,10 @@ android {
       } else {
         error("Missing signing.properties — copy signing.properties.sample and fill in your release keystore.")
       }
+      proguardFiles(
+        getDefaultProguardFile("proguard-android-optimize.txt"),
+        "proguard-rules.pro",
+      )
     }
   }
 
@@ -174,7 +178,4 @@ dependencies {
   // shizuku
   implementation(libs.shizuku.api)
   implementation(libs.shizuku.provider)
-
-  // Tasker Plugin Library
-  implementation("com.joaomgcd:taskerpluginlibrary:0.4.10")
 }

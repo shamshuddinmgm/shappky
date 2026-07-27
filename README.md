@@ -4,7 +4,7 @@
 
 Personal fork of [YasserNull/shappky](https://github.com/YasserNull/shappky) (Shell App Killer).
 
-[![Version](https://img.shields.io/badge/version-34.52.04--async-1B6CA8)](#)
+[![Version](https://img.shields.io/badge/version-34.52.06--async-1B6CA8)](#)
 [![Package](https://img.shields.io/badge/id-com.shams.srk.shappky-39FF14)](#)
 [![Min SDK](https://img.shields.io/badge/minSdk-24-blue)](#)
 [![License](https://img.shields.io/badge/license-GPL--3.0-lightgrey)](LICENSE)
@@ -33,7 +33,7 @@ Full history: [CHANGELOG.md](CHANGELOG.md)
 |---|---|
 | App name | **Shappky Async** |
 | Package | `com.shams.srk.shappky` |
-| Version | `34.52.04-async` |
+| Version | `34.52.06-async` |
 | Kotlin packages | `com.yassernull.shappky` (unchanged; only `applicationId` differs) |
 | Upstream | [YasserNull/shappky](https://github.com/YasserNull/shappky) |
 
@@ -46,7 +46,7 @@ Stops / force-stops background apps (via **Shizuku** or **Root**) to free RAM an
 - Flexible permission mode (Shizuku / Root)
 - Filter & protect apps; kill FAB
 - Quick Settings tile + background service
-- Triggers, home-screen widgets, Tasker / intents
+- Triggers, home-screen widgets
 
 This fork keeps that core and layers personal fixes and UX on top.
 

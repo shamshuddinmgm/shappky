@@ -47,7 +47,9 @@ fun AppsListSection() {
 
   var sortMode by remember { mutableStateOf(sharedPreferences.getString("sortMode", "name") ?: "name") }
   var sortDescending by remember { mutableStateOf(sharedPreferences.getBoolean("sortDescending", false)) }
-  var hiddenApps by remember { mutableStateOf(sharedPreferences.getStringSet("hidden_apps", emptySet()) ?: emptySet()) }
+  var hiddenApps by remember {
+    mutableStateOf<Set<String>>(HashSet(sharedPreferences.getStringSet("hidden_apps", emptySet()) ?: emptySet()))
+  }
 
   var showSortDialog by remember { mutableStateOf(false) }
   var showFilterDialog by remember { mutableStateOf(false) }
@@ -177,7 +179,7 @@ fun AppsListSection() {
     },
     onSaveHiddenApps = { newHiddenApps ->
       hiddenApps = newHiddenApps
-      sharedPreferences.edit().putStringSet("hidden_apps", newHiddenApps).apply()
+      sharedPreferences.edit().putStringSet("hidden_apps", HashSet(newHiddenApps)).apply()
       showFilterDialog = false
     },
     onSaveProtectedApps = { apps ->

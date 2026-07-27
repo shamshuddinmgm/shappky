@@ -310,10 +310,10 @@ class AppProcessLoader(
     }
   }
 
-  fun getHiddenApps(): Set<String> = sharedPreferences.getStringSet(KEY_HIDDEN_APPS, HashSet()) ?: HashSet()
+  fun getHiddenApps(): Set<String> = HashSet(sharedPreferences.getStringSet(KEY_HIDDEN_APPS, emptySet()) ?: emptySet())
 
   fun saveHiddenApps(hiddenApps: Set<String>) {
-    sharedPreferences.edit().putStringSet(KEY_HIDDEN_APPS, hiddenApps).apply()
+    sharedPreferences.edit().putStringSet(KEY_HIDDEN_APPS, HashSet(hiddenApps)).apply()
   }
 
   fun getAppsList(): List<AppModel> = ArrayList(currentAppsList)

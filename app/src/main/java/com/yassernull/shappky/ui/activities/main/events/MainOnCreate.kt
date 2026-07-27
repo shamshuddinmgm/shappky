@@ -85,7 +85,9 @@ fun MainActivity.handleOnCreate(savedInstanceState: Bundle?) {
   )
 
   if (!needsNotificationPermission) {
-    val mode = prefs.getString("permission_mode", "auto") ?: "auto"
+    val mode = prefs.getString("permissionMode", null)
+      ?: prefs.getString("permission_mode", "shizuku")
+      ?: "shizuku"
     PermissionManager.checkAndRequestShizukuFlow(this, mode, AppsListLogic.shellManager)
   }
 

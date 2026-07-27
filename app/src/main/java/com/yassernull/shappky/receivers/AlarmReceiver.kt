@@ -12,7 +12,9 @@ import com.yassernull.shappky.core.managers.ShellManager
 import com.yassernull.shappky.core.managers.TriggerAlarmManager
 import com.yassernull.shappky.core.managers.TriggerManager
 import com.yassernull.shappky.data.models.TriggerModel
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 class AlarmReceiver : BroadcastReceiver() {
   companion object {
@@ -27,9 +29,17 @@ class AlarmReceiver : BroadcastReceiver() {
     val trigger = triggers.firstOrNull { it.id == triggerId }
 
     if (trigger != null && trigger.isEnabled) {
-      executeAlarmTrigger(context, trigger)
-      // Reschedule for tomorrow
-      TriggerAlarmManager.scheduleAlarmForTrigger(context, trigger)
+      val pendingResult = goAsync()
+      val executor = Executors.newSingleThreadExecutor()
+      executor.execute {
+        try {
+          executeAlarmTrigger(context, trigger)
+          TriggerAlarmManager.scheduleAlarmForTrigger(context, trigger)
+        } finally {
+          pendingResult.finish()
+          executor.shutdown()
+        }
+      }
     }
   }
 
@@ -39,28 +49,32 @@ class AlarmReceiver : BroadcastReceiver() {
     val handler = Handler(Looper.getMainLooper())
     val executor = Executors.newSingleThreadExecutor()
     val shellManager = ShellManager(context, handler, executor)
-    shellManager.checkShellPermissions()
+    try {
+      shellManager.checkShellPermissions()
 
-    if (!shellManager.hasAnyShellPermission()) {
-      Log.w(TAG, "executeAlarmTrigger: Skipped due to lack of shell permissions")
-      executor.shutdown()
-      return
-    }
+      if (!shellManager.hasAnyShellPermission()) {
+        Log.w(TAG, "executeAlarmTrigger: Skipped due to lack of shell permissions")
+        return
+      }
 
-    val appManager = BackgroundAppManager(context, handler, executor, shellManager)
-    appManager.loadBackgroundApps { runningApps ->
-      val selectUserApps = trigger.selectUserApps
-      val selectSystemApps = trigger.selectSystemApps
-      val selectPersistentApps = trigger.selectPersistentApps
-      val excludedApps = trigger.excludedApps
-      val manuallySelectedApps = trigger.manuallySelectedApps
+      val appManager = BackgroundAppManager(context, handler, executor, shellManager)
+      val loadLatch = CountDownLatch(1)
+      var runningApps = emptyList<com.yassernull.shappky.data.models.AppModel>()
+      appManager.loadBackgroundApps { apps ->
+        runningApps = apps
+        loadLatch.countDown()
+      }
+      if (!loadLatch.await(60, TimeUnit.SECONDS)) {
+        Log.w(TAG, "executeAlarmTrigger: Timed out loading apps")
+        return
+      }
 
       val toKill = runningApps.filter { app ->
-        val matchesUser = !app.isSystemApp && !app.isPersistentApp && selectUserApps
-        val matchesSystem = app.isSystemApp && selectSystemApps
-        val matchesPersistent = app.isPersistentApp && selectPersistentApps
-        val matchesManual = manuallySelectedApps.contains(app.packageName)
-        val isExcluded = excludedApps.contains(app.packageName)
+        val matchesUser = !app.isSystemApp && !app.isPersistentApp && trigger.selectUserApps
+        val matchesSystem = app.isSystemApp && trigger.selectSystemApps
+        val matchesPersistent = app.isPersistentApp && trigger.selectPersistentApps
+        val matchesManual = trigger.manuallySelectedApps.contains(app.packageName)
+        val isExcluded = trigger.excludedApps.contains(app.packageName)
 
         (matchesUser || matchesSystem || matchesPersistent || matchesManual) && !isExcluded && !app.isProtected
       }
@@ -68,17 +82,21 @@ class AlarmReceiver : BroadcastReceiver() {
       val packageNamesToKill = toKill.map { it.packageName }
       Log.d(TAG, "executeAlarmTrigger: Target packages to kill: $packageNamesToKill")
       if (packageNamesToKill.isNotEmpty()) {
+        val killLatch = CountDownLatch(1)
         appManager.killPackages(packageNamesToKill, {
           val totalKb = toKill.sumOf { it.ramKb }
           val freedText = context.getString(R.string.free_up_memory, appManager.formatMemorySize(totalKb))
           Log.d(TAG, "executeAlarmTrigger: Kill completed successfully. Freed memory: $freedText")
           com.yassernull.shappky.utils.NotificationUtils.showTriggerFreedMemoryNotification(context, trigger.name, freedText)
-          executor.shutdown()
+          killLatch.countDown()
         }, showToast = false)
+        killLatch.await(120, TimeUnit.SECONDS)
       } else {
         Log.d(TAG, "executeAlarmTrigger: No packages matched search filters to kill")
-        executor.shutdown()
       }
+    } finally {
+      shellManager.removeShizukuPermissionListener()
+      executor.shutdown()
     }
   }
 }

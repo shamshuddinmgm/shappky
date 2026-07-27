@@ -15,7 +15,7 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <application
         android:name=".App"
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"
@@ -67,7 +67,6 @@
             android:label="@string/app_name">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.yassernull.shappky.ACTION_WIDGET_CLICK" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
@@ -79,13 +78,18 @@
             android:label="@string/widget_list_title">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.yassernull.shappky.ACTION_APP_CLICK" />
-                <action android:name="com.yassernull.shappky.ACTION_REFRESH" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/shappky_list_widget_info" />
         </receiver>
+        <!-- Widget click/refresh: non-exported so only our PendingIntents can invoke kills -->
+        <receiver
+            android:name=".receivers.TriggerWidgetActionReceiver"
+            android:exported="false" />
+        <receiver
+            android:name=".receivers.ListWidgetActionReceiver"
+            android:exported="false" />
         <service
             android:name=".services.ShappkyWidgetService"
             android:permission="android.permission.BIND_REMOTEVIEWS"
@@ -133,35 +137,5 @@
              android:name=".receivers.AlarmReceiver"
              android:enabled="true"
              android:exported="false" />
-
-         <receiver
-             android:name=".receivers.ShappkyIntentReceiver"
-             android:exported="true">
-             <intent-filter>
-                 <action android:name="com.yassernull.shappky.EXECUTE_TRIGGER" />
-                 <action android:name="com.yassernull.shappky.ENABLE_SERVICE" />
-                 <action android:name="com.yassernull.shappky.DISABLE_SERVICE" />
-             </intent-filter>
-         </receiver>
-
-         <!-- Tasker Plugin Integration -->
-         <activity
-             android:name=".ui.activities.tasker.TaskerConfigActivity"
-             android:exported="true"
-             android:label="Shappky Action"
-             android:icon="@drawable/ic_shappky"
-             android:theme="@style/AppTheme">
-             <intent-filter>
-                 <action android:name="com.twofortyfouram.locale.intent.action.EDIT_SETTING" />
-             </intent-filter>
-         </activity>
-
-         <receiver
-             android:name="com.joaomgcd.taskerpluginlibrary.action.BroadcastReceiverAction"
-             android:exported="true">
-             <intent-filter>
-                 <action android:name="com.twofortyfouram.locale.intent.action.FIRE_SETTING" />
-             </intent-filter>
-         </receiver>
     </application>
 </manifest>

@@ -46,7 +46,7 @@ object ProtectionManager {
         it.equals("POCO", ignoreCase = true)
     }
     return if (isXiaomiFamily) {
-      "com.miui.*|com.xiaomi.*|com.lbe.security.miui"
+      "com.miui.*|com.xiaomi.*|com.mi.*|com.hyperos.*|miui.*|com.lbe.security.miui"
     } else {
       ""
     }

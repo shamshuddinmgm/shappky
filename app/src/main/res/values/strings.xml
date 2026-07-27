@@ -109,6 +109,7 @@
     <string name="ram_freed_from_pkg">Freed %1$s from %2$s</string>
     <string name="shappky_service_channel">Shappky Foreground Service</string>
     <string name="shell_permission_required">Shizuku/Root permission required</string>
+    <string name="notification_permission_required">Notification permission is required to run the service from Quick Settings</string>
     <string name="no_apps_to_kill">No apps to kill</string>
     <string name="service_stopped">Shappky Service Stopped</string>
     <string name="free_up_memory">Free up %1$s</string>
@@ -268,18 +269,5 @@
     <string name="run_content_desc">Run</string>
     <string name="add_content_desc">Add</string>
     <string name="delete_rule_content_desc">Delete rule</string>
-    <string name="tasker_configuration">Tasker Configuration</string>
-    <string name="select_action">Select Action:</string>
-    <string name="start_shappky_service_action">Start Shappky Service</string>
-    <string name="stop_shappky_service_action">Stop Shappky Service</string>
-    <string name="execute_specific_trigger_action">Execute Specific Trigger</string>
-    <string name="select_trigger_label">Select Trigger:</string>
-    <string name="no_triggers_available">No triggers available. Please create one in Shappky first.</string>
-    <string name="trigger_name_fallback">Trigger %1$s</string>
-    <string name="failed_to_start_service">Failed to start service: %1$s</string>
-    <string name="failed_to_stop_service">Failed to stop service: %1$s</string>
-    <string name="no_shell_permission_error">No shell (Root/Shizuku) permissions granted</string>
-    <string name="trigger_not_found_error">Trigger with ID %1$s not found</string>
-    <string name="no_trigger_id_error">No Trigger ID provided</string>
 
 </resources>

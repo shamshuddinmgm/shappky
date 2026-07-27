@@ -41,23 +41,21 @@ class BackgroundAppManager(
     loader.saveHiddenApps(hiddenApps)
   }
 
-  fun killPackages(packageNames: List<String>?, onComplete: Runnable?, showToast: Boolean = true, appendKillAll: Boolean = false) {
+  fun killPackages(packageNames: List<String>?, onComplete: Runnable?, showToast: Boolean = true) {
     killHandler.killPackages(
       packageNames = packageNames,
       onComplete = onComplete,
       showToast = showToast,
-      appendKillAll = appendKillAll,
       getAppRamKb = { pkg -> loader.currentAppsList.firstOrNull { it.packageName == pkg }?.ramKb ?: 0L },
       formatMemorySize = loader::formatMemorySize,
     )
   }
 
-  fun killApp(packageName: String?, onComplete: Runnable?, forceKill: Boolean = false, appendKillAll: Boolean = false) {
+  fun killApp(packageName: String?, onComplete: Runnable?, forceKill: Boolean = false) {
     killHandler.killApp(
       packageName = packageName,
       onComplete = onComplete,
       forceKill = forceKill,
-      appendKillAll = appendKillAll,
       getAppRamKb = { pkg -> loader.currentAppsList.firstOrNull { it.packageName == pkg }?.ramKb ?: 0L },
       formatMemorySize = loader::formatMemorySize,
     )
@@ -82,6 +80,6 @@ class BackgroundAppManager(
   fun getAppsList(): List<AppModel> = loader.getAppsList()
 
   companion object {
-    fun buildSmartKillCommand(packageNames: List<String>, appendKillAll: Boolean = false): String = AppKillHandler.buildSmartKillCommand(packageNames, appendKillAll)
+    fun buildSmartKillCommand(packageNames: List<String>): String = AppKillHandler.buildSmartKillCommand(packageNames)
   }
 }

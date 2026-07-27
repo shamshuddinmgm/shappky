@@ -63,7 +63,10 @@ object PermissionHandler {
     shellManager: com.yassernull.shappky.core.managers.ShellManager,
   ) {
     if (requestCode == NOTIFICATION_PERMISSION_CODE) {
-      val mode = activity.getSharedPreferences(com.yassernull.shappky.core.preferences.PREFERENCES_NAME, Context.MODE_PRIVATE).getString("permission_mode", "auto") ?: "auto"
+      val prefs = activity.getSharedPreferences(com.yassernull.shappky.core.preferences.PREFERENCES_NAME, Context.MODE_PRIVATE)
+      val mode = prefs.getString("permissionMode", null)
+        ?: prefs.getString("permission_mode", "shizuku")
+        ?: "shizuku"
       com.yassernull.shappky.core.managers.PermissionManager.checkAndRequestShizukuFlow(activity, mode, shellManager)
     }
   }

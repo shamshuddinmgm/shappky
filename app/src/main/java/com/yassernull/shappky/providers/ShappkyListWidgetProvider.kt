@@ -1,7 +1,6 @@
 package com.yassernull.shappky.providers
 
 import android.app.ActivityManager
-import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
@@ -9,12 +8,15 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.widget.RemoteViews
-import android.widget.Toast
 import com.yassernull.shappky.App
 import com.yassernull.shappky.R
 import com.yassernull.shappky.core.managers.ShellManager
+import com.yassernull.shappky.receivers.ListWidgetActionReceiver
 import com.yassernull.shappky.services.ShappkyWidgetService
+import java.util.concurrent.Executors
 
 class ShappkyListWidgetProvider : AppWidgetProvider() {
 
@@ -38,65 +40,11 @@ class ShappkyListWidgetProvider : AppWidgetProvider() {
 
   override fun onReceive(context: Context, intent: Intent) {
     super.onReceive(context, intent)
-    val appWidgetManager = AppWidgetManager.getInstance(context)
-    val componentName = ComponentName(context, ShappkyListWidgetProvider::class.java)
-    val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
-
-    if (intent.action == ACTION_APP_CLICK) {
-      val packageName = intent.getStringExtra("package_name")
-      val appName = intent.getStringExtra("app_name") ?: ""
-      val appRam = intent.getStringExtra("app_ram") ?: ""
-      if (!packageName.isNullOrEmpty()) {
-        if (com.yassernull.shappky.core.managers.ProtectionManager.isProtected(context, packageName)) {
-          Toast.makeText(context, context.getString(R.string.force_kill_protected_message), Toast.LENGTH_SHORT).show()
-          return
-        }
-        val handler = android.os.Handler(android.os.Looper.getMainLooper())
-        val shellExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
-        val shellManager = ShellManager(context, handler, shellExecutor)
-        fun cleanupShell() {
-          shellManager.removeShizukuPermissionListener()
-          shellExecutor.shutdown()
-        }
-        if (shellManager.hasAnyShellPermission()) {
-          val killHandler = com.yassernull.shappky.core.managers.AppKillHandler(context, handler, shellManager)
-          killHandler.killApp(
-            packageName = packageName,
-            onComplete = {
-              cleanupShell()
-              val localCtx = getLocalizedContext(context)
-              val message = localCtx.getString(R.string.free_up_memory, appRam)
-              Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-
-              @Suppress("DEPRECATION")
-              appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.widget_list_view)
-              for (id in appWidgetIds) {
-                updateAppWidget(context, appWidgetManager, id)
-              }
-            },
-            getAppRamKb = { 0L },
-            formatMemorySize = { appRam },
-          )
-        } else {
-          cleanupShell()
-          Toast.makeText(context, context.getString(R.string.shell_permission_required), Toast.LENGTH_SHORT).show()
-        }
-      }
-    } else if (intent.action == ACTION_REFRESH) {
-      @Suppress("DEPRECATION")
-      appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetIds, R.id.widget_list_view)
-      for (id in appWidgetIds) {
-        updateAppWidget(context, appWidgetManager, id)
-      }
-      startAutoRefresh(context)
-    }
+    // Click/refresh handled by non-exported ListWidgetActionReceiver
   }
 
   companion object {
-    const val ACTION_APP_CLICK = "com.yassernull.shappky.ACTION_APP_CLICK"
-    const val ACTION_REFRESH = "com.yassernull.shappky.ACTION_REFRESH"
-
-    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val handler = Handler(Looper.getMainLooper())
     private var refreshRunnable: Runnable? = null
 
     fun startAutoRefresh(context: Context) {
@@ -208,7 +156,6 @@ class ShappkyListWidgetProvider : AppWidgetProvider() {
 
       val prefs = context.getSharedPreferences("AppPreferences", Context.MODE_PRIVATE)
 
-      // Background Color configuration
       val appTheme = prefs.getString("appTheme", "dark") ?: "dark"
       val dynamic = prefs.getBoolean("dynamicColors", false)
 
@@ -223,7 +170,7 @@ class ShappkyListWidgetProvider : AppWidgetProvider() {
             }
           }
           "black" -> 0xFF000000.toInt()
-          else -> { // dark theme
+          else -> {
             if (dynamic && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
               context.getColor(android.R.color.system_neutral1_900)
             } else {
@@ -236,7 +183,6 @@ class ShappkyListWidgetProvider : AppWidgetProvider() {
       }
       views.setInt(R.id.widget_background_image, "setColorFilter", resolvedBgColor)
 
-      // Dynamically style based on white theme or dark background
       val isWhiteTheme = appTheme == "white"
       val elementColor = if (isWhiteTheme) 0xFF111111.toInt() else 0xFFFFFFFF.toInt()
       val secondaryElementColor = if (isWhiteTheme) 0x90111111.toInt() else 0xB0FFFFFF.toInt()
@@ -251,7 +197,6 @@ class ShappkyListWidgetProvider : AppWidgetProvider() {
         views.setColorStateList(R.id.widget_ram_bar, "setProgressBackgroundTintList", android.content.res.ColorStateList.valueOf(progressBgColor))
       }
 
-      // Set localized title
       views.setTextViewText(R.id.widget_title, localCtx.getString(R.string.app_name))
 
       val serviceIntent = Intent(context, ShappkyWidgetService::class.java).apply {
@@ -262,13 +207,18 @@ class ShappkyListWidgetProvider : AppWidgetProvider() {
       views.setRemoteAdapter(R.id.widget_list_view, serviceIntent)
       views.setEmptyView(R.id.widget_list_view, R.id.widget_empty_view)
 
-      val handler = android.os.Handler(android.os.Looper.getMainLooper())
-      val shellExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
-      val shellManager = ShellManager(context, handler, shellExecutor)
-      if (shellManager.hasAnyShellPermission()) {
-        views.setTextViewText(R.id.widget_empty_view, localCtx.getString(R.string.no_apps_to_kill))
-      } else {
-        views.setTextViewText(R.id.widget_empty_view, localCtx.getString(R.string.permission_denied))
+      val shellHandler = Handler(Looper.getMainLooper())
+      val shellExecutor = Executors.newSingleThreadExecutor()
+      val shellManager = ShellManager(context, shellHandler, shellExecutor)
+      try {
+        if (shellManager.hasAnyShellPermission()) {
+          views.setTextViewText(R.id.widget_empty_view, localCtx.getString(R.string.no_apps_to_kill))
+        } else {
+          views.setTextViewText(R.id.widget_empty_view, localCtx.getString(R.string.permission_denied))
+        }
+      } finally {
+        shellManager.removeShizukuPermissionListener()
+        shellExecutor.shutdown()
       }
 
       val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
@@ -279,7 +229,6 @@ class ShappkyListWidgetProvider : AppWidgetProvider() {
       val usedMb = totalMb - availMb
       val percentage = if (totalMb > 0) (usedMb * 100 / totalMb).toInt() else 0
 
-      // RAM Usage Bar configuration
       val ramBarRefresh = prefs.getBoolean("widget_list_ram_bar_refresh_$appWidgetId", true)
       if (ramBarRefresh) {
         views.setViewVisibility(R.id.widget_ram_bar, android.view.View.VISIBLE)
@@ -291,27 +240,8 @@ class ShappkyListWidgetProvider : AppWidgetProvider() {
         views.setViewVisibility(R.id.widget_ram_text, android.view.View.GONE)
       }
 
-      val clickIntent = Intent(context, ShappkyListWidgetProvider::class.java).apply {
-        action = ACTION_APP_CLICK
-      }
-      val clickPendingIntent = PendingIntent.getBroadcast(
-        context,
-        appWidgetId,
-        clickIntent,
-        PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-      )
-      views.setPendingIntentTemplate(R.id.widget_list_view, clickPendingIntent)
-
-      val refreshIntent = Intent(context, ShappkyListWidgetProvider::class.java).apply {
-        action = ACTION_REFRESH
-      }
-      val refreshPendingIntent = PendingIntent.getBroadcast(
-        context,
-        appWidgetId + 100000,
-        refreshIntent,
-        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-      )
-      views.setOnClickPendingIntent(R.id.widget_refresh_button, refreshPendingIntent)
+      views.setPendingIntentTemplate(R.id.widget_list_view, ListWidgetActionReceiver.clickPendingIntent(context, appWidgetId))
+      views.setOnClickPendingIntent(R.id.widget_refresh_button, ListWidgetActionReceiver.refreshPendingIntent(context, appWidgetId))
 
       appWidgetManager.updateAppWidget(appWidgetId, views)
     }

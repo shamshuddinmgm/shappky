@@ -6,6 +6,38 @@ Version format: **`34.52.<revision>-async`** (`versionCode` = `3452xx`)
 
 ---
 
+## [34.52.06-async] — 2026-07-27
+
+### Removed
+- **Tasker / Locale plugin** (config activity, fire receiver, library, related UI/strings) — external automation subset of Intents
+- External Intent API was already removed in 34.52.05
+
+---
+
+## [34.52.05-async] — 2026-07-27
+
+### Removed
+- External Intent automation API (`ENABLE_SERVICE` / `DISABLE_SERVICE` / `EXECUTE_TRIGGER` broadcast receiver)
+
+### Security
+- Widget kill/refresh actions moved to **non-exported** receivers (blocks other apps from triggering kills)
+- `allowBackup="false"`
+
+### Fixed
+- Release R8: added `proguard-rules.pro` (Shizuku reflection, libsu)
+- Alarm async work uses `goAsync` / blocking wait + ShellManager cleanup
+- `kill -9` matches exact process name / `pkg:service` only (no substring siblings)
+- Permission mode pref key unified (`permissionMode`)
+- SharedPreferences StringSet copies for hidden apps / service exclusions
+- Foreground skip uses token-safe dumpsys matching
+- Trigger widget no longer falls back to a random first trigger
+- Broader Xiaomi/HyperOS default protected regex
+- Quick Tile explains missing notification permission
+- Service `isRunning` can recover via ActivityManager after process death
+- Removed dead `appendKillAll` API
+
+---
+
 ## [34.52.04-async] — 2026-07-27
 
 ### Changed
@@ -64,4 +96,4 @@ Version format: **`34.52.<revision>-async`** (`versionCode` = `3452xx`)
 - Minimum SDK 24; root via libsu
 - Settings: theme, dynamic colors, permission mode, auto-refresh, RAM bar
 - Kotlin + Jetpack Compose; Gradle Kotlin DSL
-- Triggers, widgets, Tasker plugin, Quick Tile service
+- Triggers, widgets, Quick Tile service

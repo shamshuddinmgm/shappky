@@ -86,13 +86,12 @@ class TriggerActionExecutor(
       val packageNamesToKill = toKill.map { it.packageName }
       Log.d(TAG, "executeServiceTrigger: Target packages to kill: $packageNamesToKill")
       if (packageNamesToKill.isNotEmpty()) {
-        val shouldKillAll = selectSystemApps || selectUserApps
         appManager.killPackages(packageNamesToKill, {
           val totalKb = toKill.sumOf { it.ramKb }
           val freedText = context.getString(R.string.free_up_memory, appManager.formatMemorySize(totalKb))
           Log.d(TAG, "executeServiceTrigger: Kill completed successfully. Freed memory: $freedText")
           NotificationUtils.showTriggerFreedMemoryNotification(context, trigger.name, freedText)
-        }, showToast = false, appendKillAll = shouldKillAll)
+        }, showToast = false)
       } else {
         Log.d(TAG, "executeServiceTrigger: No packages matched search filters to kill")
       }

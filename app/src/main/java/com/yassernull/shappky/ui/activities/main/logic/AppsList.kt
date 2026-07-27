@@ -89,7 +89,6 @@ object AppsListLogic {
     val packagesToKill = appsDataList.filter { it.isSelected }.map { it.packageName }
     if (packagesToKill.isEmpty()) return
 
-    val isAllSelected = packagesToKill.size == appsDataList.size
     replaceAllSelection(activity, false)
 
     appManager.killPackages(
@@ -98,7 +97,6 @@ object AppsListLogic {
         loadBackgroundApps(activity, showRefreshIndicator = true, appsAutoRefresh = false) { forceMenuVisibilityUpdate(activity) }
       },
       showToast = true,
-      appendKillAll = isAllSelected,
     )
   }
 

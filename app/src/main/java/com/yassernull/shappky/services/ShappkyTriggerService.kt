@@ -250,6 +250,9 @@ class ShappkyTriggerService : Service() {
 
   override fun onDestroy() {
     isRunning = false
+    if (::shellManager.isInitialized) {
+      shellManager.removeShizukuPermissionListener()
+    }
     super.onDestroy()
     triggerExecutor.shutdownNow()
     executor.shutdownNow()
