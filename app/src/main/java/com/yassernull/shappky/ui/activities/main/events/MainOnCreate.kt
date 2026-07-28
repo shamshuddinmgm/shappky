@@ -54,6 +54,7 @@ fun MainActivity.handleOnCreate(savedInstanceState: Bundle?) {
   AppsListLogic.showSystemApps = prefs.getBoolean(AppsListPreferences.KEY_SHOW_SYSTEM_APPS, true)
   AppsListLogic.showPersistentApps = prefs.getBoolean(AppsListPreferences.KEY_SHOW_PERSISTENT_APPS, false)
   AppsListLogic.showProtectedApps = prefs.getBoolean(AppsListPreferences.KEY_SHOW_PROTECTED_APPS, false)
+  AppsListLogic.showServiceProcesses = prefs.getBoolean(AppsListPreferences.KEY_SHOW_SERVICE_PROCESSES, false)
   AppsListLogic.showAppTypeIcons = prefs.getBoolean(AppsListPreferences.KEY_SHOW_APP_TYPE_ICONS, true)
   AppsListLogic.appsAutoRefresh = prefs.getBoolean(AppsListPreferences.KEY_APPS_AUTO_REFRESH, true)
 
@@ -68,6 +69,7 @@ fun MainActivity.handleOnCreate(savedInstanceState: Bundle?) {
   AppsListLogic.appManager.setShowSystemApps(AppsListLogic.showSystemApps)
   AppsListLogic.appManager.setShowPersistentApps(AppsListLogic.showPersistentApps)
   AppsListLogic.appManager.setShowProtectedApps(AppsListLogic.showProtectedApps)
+  AppsListLogic.appManager.setShowServiceProcesses(AppsListLogic.showServiceProcesses)
 
   PermissionHandler.setupShizukuPermissionListener(this, AppsListLogic.shellManager)
   AppsListLogic.shellManager.setOnShizukuServiceConnected(
@@ -96,6 +98,9 @@ fun MainActivity.handleOnCreate(savedInstanceState: Bundle?) {
 
   AppsListLogic.setupAutoRefresh(this)
 
+  // If killer was left running without an explicit opt-in, shut it down.
+  MainActions.ensureKillerServiceMatchesPreference(this)
+
   TriggerServiceManager.updateTriggerServiceState(this)
   applySystemBars()
 
@@ -106,21 +111,21 @@ fun MainActivity.handleOnCreate(savedInstanceState: Bundle?) {
     AppTheme {
       MainContent(
         apps = AppsListLogic.appsDataList,
-        ramState = AppsListLogic.ramState,
         hasPermission = AppsListLogic.hasPermission,
         isLoadingBackgroundApps = AppsListLogic.isLoadingBackgroundApps,
         showUserApps = AppsListLogic.showUserApps,
         showSystemApps = AppsListLogic.showSystemApps,
         showPersistentApps = AppsListLogic.showPersistentApps,
         showProtectedApps = AppsListLogic.showProtectedApps,
+        showServiceProcesses = AppsListLogic.showServiceProcesses,
         showAppTypeIcons = AppsListLogic.showAppTypeIcons,
         initialSortMode = prefs.getString(AppsListPreferences.KEY_SORT_MODE, AppsListPreferences.SORT_BY_NAME) ?: AppsListPreferences.SORT_BY_NAME,
         initialSortDescending = prefs.getBoolean(AppsListPreferences.KEY_SORT_DESCENDING, false),
         sortByName = AppsListPreferences.SORT_BY_NAME,
         sortByRam = AppsListPreferences.SORT_BY_RAM,
         hiddenApps = AppsListLogic.appManager.getHiddenApps(),
-        onSelectAll = { selected ->
-          AppsListLogic.replaceAllSelection(activity, selected)
+        onSelectAll = { selected, limitToPackages ->
+          AppsListLogic.replaceAllSelection(activity, selected, limitToPackages)
           AppsListLogic.forceMenuVisibilityUpdate(activity)
         },
         onRefresh = {
@@ -132,6 +137,7 @@ fun MainActivity.handleOnCreate(savedInstanceState: Bundle?) {
             AppsListLogic.showSystemApps,
             AppsListLogic.showPersistentApps,
             AppsListLogic.showProtectedApps,
+            AppsListLogic.showServiceProcesses,
             activity,
             onUpdateValue = { AppsListLogic.showUserApps = it },
           )
@@ -142,6 +148,7 @@ fun MainActivity.handleOnCreate(savedInstanceState: Bundle?) {
             AppsListLogic.showUserApps,
             AppsListLogic.showPersistentApps,
             AppsListLogic.showProtectedApps,
+            AppsListLogic.showServiceProcesses,
             activity,
             onUpdateValue = { AppsListLogic.showSystemApps = it },
           )
@@ -152,6 +159,7 @@ fun MainActivity.handleOnCreate(savedInstanceState: Bundle?) {
             AppsListLogic.showUserApps,
             AppsListLogic.showSystemApps,
             AppsListLogic.showProtectedApps,
+            AppsListLogic.showServiceProcesses,
             activity,
             onUpdateValue = { AppsListLogic.showPersistentApps = it },
           )
@@ -162,8 +170,20 @@ fun MainActivity.handleOnCreate(savedInstanceState: Bundle?) {
             AppsListLogic.showUserApps,
             AppsListLogic.showSystemApps,
             AppsListLogic.showPersistentApps,
+            AppsListLogic.showServiceProcesses,
             activity,
             onUpdateValue = { AppsListLogic.showProtectedApps = it },
+          )
+        },
+        onToggleShowServiceProcesses = {
+          AppsListLogic.onToggleShowServiceProcesses(
+            AppsListLogic.showServiceProcesses,
+            AppsListLogic.showUserApps,
+            AppsListLogic.showSystemApps,
+            AppsListLogic.showPersistentApps,
+            AppsListLogic.showProtectedApps,
+            activity,
+            onUpdateValue = { AppsListLogic.showServiceProcesses = it },
           )
         },
         onOpenSettings = {
@@ -195,10 +215,6 @@ fun MainActivity.handleOnCreate(savedInstanceState: Bundle?) {
         },
         onOpenTriggers = {
           MainActions.onOpenTriggers(activity)
-        },
-        isServiceRunning = AppsListLogic.isServiceRunning,
-        onToggleService = { start ->
-          MainActions.onToggleService(activity, start, AppsListLogic.shellManager)
         },
         onAppLongClick = { app ->
           AppsListLogic.onAppLongClick(

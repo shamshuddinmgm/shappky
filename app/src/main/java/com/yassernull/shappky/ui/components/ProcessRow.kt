@@ -10,6 +10,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -19,7 +20,11 @@ import com.yassernull.shappky.R
 import com.yassernull.shappky.data.models.ProcessInfo
 
 @Composable
-fun ProcessRow(process: ProcessInfo) {
+fun ProcessRow(
+  process: ProcessInfo,
+  nameColor: Color = MaterialTheme.colorScheme.onSurface,
+  metaColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+) {
   val context = LocalContext.current
   Column(
     modifier = Modifier
@@ -30,6 +35,7 @@ fun ProcessRow(process: ProcessInfo) {
       text = process.name,
       style = MaterialTheme.typography.bodyMedium,
       fontWeight = FontWeight.Medium,
+      color = nameColor,
       maxLines = 1,
       overflow = TextOverflow.Ellipsis,
     )
@@ -40,12 +46,12 @@ fun ProcessRow(process: ProcessInfo) {
       Text(
         text = stringResource(R.string.pid_format, process.pid),
         style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = metaColor,
       )
       Text(
         text = Formatter.formatFileSize(context, process.ramKb * 1024L),
         style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = metaColor,
       )
     }
   }

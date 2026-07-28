@@ -4,7 +4,7 @@
 
 Personal fork of [YasserNull/shappky](https://github.com/YasserNull/shappky) (Shell App Killer).
 
-[![Version](https://img.shields.io/badge/version-34.52.06--async-1B6CA8)](#)
+[![Version](https://img.shields.io/badge/version-34.52.19--async-B4233A)](#)
 [![Package](https://img.shields.io/badge/id-com.shams.srk.shappky-39FF14)](#)
 [![Min SDK](https://img.shields.io/badge/minSdk-24-blue)](#)
 [![License](https://img.shields.io/badge/license-GPL--3.0-lightgrey)](LICENSE)
@@ -33,7 +33,7 @@ Full history: [CHANGELOG.md](CHANGELOG.md)
 |---|---|
 | App name | **Shappky Async** |
 | Package | `com.shams.srk.shappky` |
-| Version | `34.52.06-async` |
+| Version | `34.52.19-async` |
 | Kotlin packages | `com.yassernull.shappky` (unchanged; only `applicationId` differs) |
 | Upstream | [YasserNull/shappky](https://github.com/YasserNull/shappky) |
 

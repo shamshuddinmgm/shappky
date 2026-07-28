@@ -13,6 +13,8 @@ import android.widget.Toast
 import androidx.core.content.ContextCompat
 import com.yassernull.shappky.R
 import com.yassernull.shappky.core.managers.ShellManager
+import com.yassernull.shappky.core.preferences.AppsListPreferences
+import com.yassernull.shappky.core.preferences.PREFERENCES_NAME
 import java.util.concurrent.Executors
 
 class ShappkyQuickTile : TileService() {
@@ -52,10 +54,18 @@ class ShappkyQuickTile : TileService() {
         shellManager.removeShizukuPermissionListener()
         executor.shutdown()
       }
+      getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
+        .edit()
+        .putBoolean(AppsListPreferences.KEY_SERVICE_ENABLED, true)
+        .commit()
       startForegroundService(Intent(this, ShappkyService::class.java))
       tile.state = Tile.STATE_ACTIVE
       tile.label = getString(R.string.shappky_service)
     } else {
+      getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
+        .edit()
+        .putBoolean(AppsListPreferences.KEY_SERVICE_ENABLED, false)
+        .commit()
       stopService(Intent(this, ShappkyService::class.java))
       tile.state = Tile.STATE_INACTIVE
       tile.label = getString(R.string.shappky_service)

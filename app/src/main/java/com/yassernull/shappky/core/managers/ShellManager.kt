@@ -5,7 +5,9 @@ import android.content.pm.PackageManager
 import android.os.Handler
 import android.util.Log
 import com.topjohnwu.superuser.Shell
+import com.yassernull.shappky.BuildConfig
 import rikka.shizuku.Shizuku
+import java.io.File
 import java.util.concurrent.ExecutorService
 import java.util.function.Consumer
 
@@ -179,14 +181,13 @@ class ShellManager(
   }
 
   private fun executeShizukuCommand(command: String, onSuccess: Runnable?): Boolean = try {
-    Log.d(TAG, "Shizuku command executing command=$command")
+    logCommand("Shizuku exec", command)
     val process = createShizukuProcess(command)
     process.waitFor()
-    Log.d(TAG, "Shizuku command executed command=$command")
     onSuccess?.let { handler.post(it) }
     true
   } catch (e: Exception) {
-    Log.e(TAG, "Shizuku command Exception command=$command", e)
+    Log.e(TAG, "Shizuku command Exception len=${command.length}", e)
     e.printStackTrace()
     false
   }
@@ -195,7 +196,7 @@ class ShellManager(
     command: String,
     outputProcessor: Consumer<String>,
   ): Boolean = try {
-    Log.d(TAG, "Shizuku command with output executing command=$command")
+    logCommand("Shizuku output", command)
     val process = createShizukuProcess(command)
 
     val stdoutThread = Thread {
@@ -217,7 +218,7 @@ class ShellManager(
     stderrThread.join()
     true
   } catch (e: Exception) {
-    Log.e(TAG, "Shizuku command with output failed command=$command", e)
+    Log.e(TAG, "Shizuku command with output failed len=${command.length}", e)
     e.printStackTrace()
     false
   }
@@ -236,7 +237,7 @@ class ShellManager(
   }
 
   private fun executeShizukuCommandAndGetFullOutput(command: String): String? = try {
-    Log.d(TAG, "Shizuku full output command executing command=$command")
+    logCommand("Shizuku full", command)
     val process = createShizukuProcess(command)
 
     val output = StringBuilder()
@@ -260,7 +261,7 @@ class ShellManager(
 
     output.toString()
   } catch (e: Exception) {
-    Log.e(TAG, "Shizuku command failed command=$command", e)
+    Log.e(TAG, "Shizuku command failed len=${command.length}", e)
     e.printStackTrace()
     null
   }
@@ -276,24 +277,37 @@ class ShellManager(
     return method.invoke(null, arrayOf("sh", "-c", command), null, null) as java.lang.Process
   }
 
+  /**
+   * Deploy bundled toybox under an app-specific tmp path named exactly `toybox`
+   * (multicall binary requires that basename). Always byte-compare with the APK
+   * copy and overwrite on mismatch — never trust a pre-existing executable
+   * (blocks /data/local/tmp plant attacks).
+   */
   fun deployToybox(nativeLibraryDir: String) {
     if (!executor.isShutdown) {
       executor.execute {
-        val mode = getPermissionMode()
-        val source = "$nativeLibraryDir/libtoybox.so"
-        val dest = TOYBOX_PATH
-        val checkCmd = "[ -f $dest ] && [ -x $dest ]"
-        val copyCmd = "cp $source $dest && chmod 755 $dest"
-        val cmd = "if $checkCmd; then exit 0; else $copyCmd; fi"
+        val source = File(nativeLibraryDir, "libtoybox.so")
+        if (!source.isFile) {
+          Log.e(TAG, "Bundled toybox missing at ${source.absolutePath}")
+          return@execute
+        }
+        val destDir = "/data/local/tmp/shappky.${context.packageName}"
+        val dest = "$destDir/toybox"
+        // cmp -s: skip copy only when contents already match the APK binary
+        val cmd =
+          "mkdir -p '$destDir' && " +
+            "if cmp -s '${source.absolutePath}' '$dest' 2>/dev/null; then chmod 755 '$dest'; " +
+            "else cp '${source.absolutePath}' '$dest' && chmod 755 '$dest'; fi && " +
+            "rm -f '$LEGACY_TOYBOX_PATH'"
         try {
           when {
-            mode == "root" && hasRootAccess() -> Shell.cmd(cmd).exec()
-            mode == "shizuku" && hasShizukuPermission() -> {
-              val process = createShizukuProcess(cmd)
-              process.waitFor()
+            getPermissionMode() == "root" && hasRootAccess() -> Shell.cmd(cmd).exec()
+            getPermissionMode() == "shizuku" && hasShizukuPermission() -> {
+              createShizukuProcess(cmd).waitFor()
             }
           }
-          Log.d(TAG, "Toybox deployed to $dest")
+          resolvedToyboxPath = dest
+          Log.d(TAG, "Toybox ready at $dest")
         } catch (e: Exception) {
           Log.e(TAG, "Failed to deploy toybox", e)
         }
@@ -302,7 +316,28 @@ class ShellManager(
   }
 
   companion object {
-    const val TOYBOX_PATH = "/data/local/tmp/toybox"
     private const val TAG = "ShappkyShell"
+    private const val LEGACY_TOYBOX_PATH = "/data/local/tmp/toybox"
+
+    @Volatile
+    private var resolvedToyboxPath: String = ""
+
+    /** Absolute path to deployed toybox (app-scoped tmp dir, never legacy plant path). */
+    @JvmStatic
+    fun toyboxPath(): String {
+      val cached = resolvedToyboxPath
+      if (cached.isNotEmpty()) return cached
+      val expected = "/data/local/tmp/shappky.com.shams.srk.shappky/toybox"
+      resolvedToyboxPath = expected
+      return expected
+    }
+
+    private fun logCommand(label: String, command: String) {
+      if (BuildConfig.DEBUG) {
+        Log.d(TAG, "$label command=$command")
+      } else {
+        Log.d(TAG, "$label len=${command.length}")
+      }
+    }
   }
 }

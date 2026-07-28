@@ -56,6 +56,7 @@ fun Context.loadAllApps(callback: (List<AppModel>) -> Unit) {
             isSystemApp = isSystem,
             isPersistentApp = isPersistent,
             isProtected = isProtected,
+            isServiceProcess = false,
           ),
         )
       }

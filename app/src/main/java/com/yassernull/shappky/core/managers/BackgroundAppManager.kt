@@ -77,6 +77,10 @@ class BackgroundAppManager(
     loader.showProtectedApps = show
   }
 
+  fun setShowServiceProcesses(show: Boolean) {
+    loader.showServiceProcesses = show
+  }
+
   fun getAppsList(): List<AppModel> = loader.getAppsList()
 
   companion object {

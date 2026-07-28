@@ -16,10 +16,12 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.service.quicksettings.TileService
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.yassernull.shappky.R
 import com.yassernull.shappky.core.managers.ProtectionManager
 import com.yassernull.shappky.core.managers.ShellManager
+import com.yassernull.shappky.core.preferences.AppsListPreferences
 import java.io.BufferedReader
 import java.io.IOException
 import java.io.StringReader
@@ -33,27 +35,46 @@ class ShappkyService : Service() {
 
   override fun onCreate() {
     super.onCreate()
-    shellManager = ShellManager(this, handler, executor)
     createNotificationChannel()
-
-    val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
+    // Must call startForeground promptly when launched via startForegroundService.
+    val bootstrapNotification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
       .setContentTitle(getString(R.string.shappky_service))
       .setContentText(getString(R.string.shappky_service_notification_text))
       .setSmallIcon(R.drawable.ic_shappky)
       .setOngoing(true)
       .build()
-
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-      startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+      startForeground(1, bootstrapNotification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
     } else {
-      startForeground(1, notification)
+      startForeground(1, bootstrapNotification)
     }
+
+    val prefs = getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+    // Hard gate: never run the killer loop unless the user explicitly enabled it.
+    if (!prefs.getBoolean(KEY_SERVICE_ENABLED, false)) {
+      Log.w(TAG, "ShappkyService started without service_enabled — stopping immediately")
+      setRunningState(false)
+      stopForeground(STOP_FOREGROUND_REMOVE)
+      stopSelf()
+      return
+    }
+
+    shellManager = ShellManager(this, handler, executor)
     setRunningState(true)
     requestTileUpdate()
     startKillerLoop()
   }
 
-  override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
+  override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    val enabled = getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+      .getBoolean(KEY_SERVICE_ENABLED, false)
+    if (!enabled) {
+      stopSelf()
+      return START_NOT_STICKY
+    }
+    // Do not sticky-restart after crash/swipe — user must opt in again via menu/tile.
+    return START_NOT_STICKY
+  }
 
   private fun startKillerLoop() {
     if (!executor.isShutdown) {
@@ -127,7 +148,7 @@ class ShappkyService : Service() {
       "dumpsys activity activities | grep -E 'mResumedActivity|topResumedActivity|mFocusedApp|topActivity'",
     ) ?: return
     val psOutput =
-      shellManager.runShellCommandAndGetFullOutput("${com.yassernull.shappky.core.managers.ShellManager.TOYBOX_PATH} ps -A -o rss,name | grep '\\.' | grep -v '[-@]'")
+      shellManager.runShellCommandAndGetFullOutput("${com.yassernull.shappky.core.managers.ShellManager.toyboxPath()} ps -A -o rss,name | grep '\\.' | grep -v '[-@]'")
         ?: return
 
     val runningPackages = HashSet<String>()
@@ -285,6 +306,8 @@ class ShappkyService : Service() {
     private const val CHANNEL_ID = "ShappkyChannel"
     private const val PREFERENCES_NAME = "AppPreferences"
     private const val KEY_HIDDEN_APPS = "hidden_apps"
+    private const val KEY_SERVICE_ENABLED = AppsListPreferences.KEY_SERVICE_ENABLED
+    private const val TAG = "ShappkyService"
 
     @JvmStatic
     fun isRunning(): Boolean = isRunning

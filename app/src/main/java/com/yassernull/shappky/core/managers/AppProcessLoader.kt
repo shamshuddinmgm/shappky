@@ -24,6 +24,7 @@ class AppProcessLoader(
   var showSystemApps = true
   var showPersistentApps = false
   var showProtectedApps = false
+  var showServiceProcesses = false
   private val sharedPreferences =
     context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
 
@@ -95,33 +96,41 @@ class AppProcessLoader(
           val protectedApps = ProtectionManager.getProtectedApps(context)
 
           if (shellManager.isShellCommandReady()) {
-            val command = "${ShellManager.TOYBOX_PATH} ps -A -o rss,name | grep '\\.' | grep -v '[-@]'"
+            // Include hyphen/@ names so HAL / vendor services can appear when enabled.
+            val command = "${ShellManager.toyboxPath()} ps -A -o rss,name | grep '\\.'"
             try {
               val fullOutput = shellManager.runShellCommandAndGetFullOutput(command)
               if (fullOutput != null) {
                 val entries = parsePsOutputToEntries(fullOutput)
                 val pm = context.packageManager
-                val validatedEntries = entries.filter { entry ->
+                val appEntries = mutableListOf<PsEntry>()
+                val serviceEntries = mutableListOf<PsEntry>()
+                for (entry in entries) {
                   try {
                     pm.getApplicationInfo(entry.packageName, 0)
-                    true
+                    appEntries.add(entry)
                   } catch (_: PackageManager.NameNotFoundException) {
-                    false
+                    serviceEntries.add(entry)
                   }
                 }
-                val packageRamMap = aggregateByPackage(validatedEntries)
+                val packageRamMap = aggregateByPackage(appEntries)
+                val serviceRamMap = aggregateByPackage(serviceEntries)
                 val runningEntries = packageRamMap.map { "${it.key}:${it.value}" }.toSet()
+                val serviceProcessEntries = serviceRamMap.map { "${it.key}:${it.value}" }.toSet()
+                val defaultIcon = try {
+                  pm.getDefaultActivityIcon()
+                } catch (_: Exception) {
+                  context.packageManager.getApplicationIcon(context.packageName)
+                }
 
                 result = AppModelFilter.buildRunningAppModels(
                   runningEntries = runningEntries,
                   hiddenApps = hiddenApps,
                   protectedApps = protectedApps,
-                  showUserApps = showUserApps,
-                  showSystemApps = showSystemApps,
-                  showPersistentApps = showPersistentApps,
-                  showProtectedApps = showProtectedApps,
+                  serviceProcessEntries = serviceProcessEntries,
                   context = context,
                   formatMemorySize = ::formatMemorySize,
+                  defaultIcon = defaultIcon,
                 ).toMutableList()
               }
             } catch (e: Exception) {
@@ -139,7 +148,8 @@ class AppProcessLoader(
           }
 
           result.sortWith(
-            compareBy<AppModel> { it.isSystemApp }
+            compareBy<AppModel> { it.isServiceProcess }
+              .thenBy { it.isSystemApp }
               .thenBy { it.isPersistentApp }
               .thenBy { it.appName.lowercase(Locale.getDefault()) },
           )
@@ -195,7 +205,7 @@ class AppProcessLoader(
         val ramUsageByPackage = mutableMapOf<String, Long>()
         try {
           if (requestedPackages.isNotEmpty() && shellManager.isShellCommandReady()) {
-            val command = "${ShellManager.TOYBOX_PATH} ps -A -o rss,name | grep '\\.' | grep -v '[-@]'"
+            val command = "${ShellManager.toyboxPath()} ps -A -o rss,name | grep '\\.' | grep -v '[-@]'"
             try {
               val fullOutput = shellManager.runShellCommandAndGetFullOutput(command)
               if (fullOutput != null) {
@@ -223,7 +233,24 @@ class AppProcessLoader(
       executor.execute {
         try {
           if (shellManager.isShellCommandReady()) {
-            val command = "${ShellManager.TOYBOX_PATH} ps -A -o pid,user,rss,name | grep '\\.' | grep -v '[-@]' | grep '" + app.packageName + "'"
+            if (!com.yassernull.shappky.utils.PackageMatchUtils.isValidAndroidPackageName(app.packageName)) {
+              handler.post {
+                callback.accept(
+                  com.yassernull.shappky.data.models.AppDetailedInfo(
+                    app = app,
+                    pid = "-",
+                    user = "-",
+                    isForeground = false,
+                    cpuUsage = "0.0%",
+                    threads = "0",
+                    totalRamKb = 0L,
+                    processes = emptyList(),
+                  ),
+                )
+              }
+              return@execute
+            }
+            val command = "${ShellManager.toyboxPath()} ps -A -o pid,user,rss,name | grep '\\.' | grep -v '[-@]' | grep '" + app.packageName + "'"
             val fullOutput = shellManager.runShellCommandAndGetFullOutput(command)
             var processes = mutableListOf<com.yassernull.shappky.data.models.ProcessInfo>()
             var mainPid = "-"

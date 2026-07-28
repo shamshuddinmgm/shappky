@@ -34,18 +34,18 @@ import com.yassernull.shappky.ui.components.CheckableMenuItem
 fun MainToolbar(
   appsCount: Int,
   hasSelection: Boolean,
-  isServiceRunning: Boolean,
   showUserApps: Boolean,
   showSystemApps: Boolean,
   showPersistentApps: Boolean,
   showProtectedApps: Boolean,
+  showServiceProcesses: Boolean,
   onOpenTriggers: () -> Unit,
   onSelectAll: (Boolean) -> Unit,
-  onToggleService: (Boolean) -> Unit,
   onToggleShowUserApps: () -> Unit,
   onToggleShowSystemApps: () -> Unit,
   onToggleShowPersistentApps: () -> Unit,
   onToggleShowProtectedApps: () -> Unit,
+  onToggleShowServiceProcesses: () -> Unit,
   onOpenSortDialog: () -> Unit,
   onOpenFilterDialog: () -> Unit,
   onOpenSettings: () -> Unit,
@@ -56,10 +56,13 @@ fun MainToolbar(
   TopAppBar(
     title = {
       Column {
-        Text(stringResource(R.string.app_name))
+        Text(
+          text = stringResource(R.string.app_name),
+          color = MaterialTheme.colorScheme.primary,
+        )
         Text(
           text = stringResource(R.string.running_apps_count, appsCount),
-          color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
           fontSize = 12.sp,
         )
       }
@@ -67,7 +70,7 @@ fun MainToolbar(
     colors = TopAppBarDefaults.topAppBarColors(
       containerColor = MaterialTheme.colorScheme.surface,
       titleContentColor = MaterialTheme.colorScheme.onSurface,
-      actionIconContentColor = MaterialTheme.colorScheme.onSurface,
+      actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
     ),
     actions = {
       IconButton(onClick = onOpenTriggers) {
@@ -90,14 +93,6 @@ fun MainToolbar(
         Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.more))
       }
       DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-        CheckableMenuItem(
-          text = stringResource(R.string.shappky_service),
-          checked = isServiceRunning,
-          onClick = {
-            showMenu = false
-            onToggleService(!isServiceRunning)
-          },
-        )
         CheckableMenuItem(
           text = stringResource(R.string.show_user_apps),
           checked = showUserApps,
@@ -128,6 +123,14 @@ fun MainToolbar(
           onClick = {
             showMenu = false
             onToggleShowProtectedApps()
+          },
+        )
+        CheckableMenuItem(
+          text = stringResource(R.string.show_service_processes),
+          checked = showServiceProcesses,
+          onClick = {
+            showMenu = false
+            onToggleShowServiceProcesses()
           },
         )
         DropdownMenuItem(

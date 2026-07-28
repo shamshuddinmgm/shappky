@@ -1,7 +1,7 @@
 <resources>
     <style name="AppTheme" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/control_blue</item>
-        <item name="colorPrimaryDark">@color/control_blue</item>
+        <item name="colorPrimary">@color/control_accent</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
         <item name="colorControlHighlight">@color/colorControlHighlight</item>
         <item name="colorControlNormal">@color/colorControlNormal</item>
@@ -16,8 +16,8 @@
     </style>
     <style name="AppTheme_Dark" parent="AppTheme" />
     <style name="AppTheme_Light" parent="Theme.Material3.Light.NoActionBar">
-        <item name="colorPrimary">@color/control_blue</item>
-        <item name="colorPrimaryDark">@color/control_blue</item>
+        <item name="colorPrimary">@color/control_accent</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
         <item name="colorControlHighlight">@color/colorControlHighlight</item>
         <item name="colorControlNormal">@color/colorControlNormal</item>
@@ -31,8 +31,8 @@
         <item name="toolbarIconColor">@color/theme_light_on_primary</item>
     </style>
     <style name="AppTheme_Black" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/control_blue</item>
-        <item name="colorPrimaryDark">@color/control_blue</item>
+        <item name="colorPrimary">@color/control_accent</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
         <item name="colorControlHighlight">@color/colorControlHighlight</item>
         <item name="colorControlNormal">@color/colorControlNormal</item>

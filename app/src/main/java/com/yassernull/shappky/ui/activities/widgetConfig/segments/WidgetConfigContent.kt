@@ -42,9 +42,9 @@ fun WidgetConfigScreen(appWidgetId: Int, onSave: () -> Unit, onDismiss: () -> Un
     mutableStateOf(prefs.getInt(WidgetPreferences.getIconColorKey(appWidgetId), Color.WHITE))
   }
 
-  val defaultBlue = remember { context.getColor(R.color.control_blue) }
+  val defaultAccent = remember { context.getColor(R.color.control_accent) }
   var selectedBgColor by remember {
-    mutableStateOf(prefs.getInt(WidgetPreferences.getBgColorKey(appWidgetId), defaultBlue))
+    mutableStateOf(prefs.getInt(WidgetPreferences.getBgColorKey(appWidgetId), defaultAccent))
   }
 
   val appTheme = remember { prefs.getString("appTheme", "dark") ?: "dark" }
@@ -113,7 +113,7 @@ fun WidgetConfigScreen(appWidgetId: Int, onSave: () -> Unit, onDismiss: () -> Un
           }
           Spacer(Modifier.width(8.dp))
           TextButton(onClick = {
-            selectedBgColor = defaultBlue
+            selectedBgColor = defaultAccent
             selectedIconColor = Color.WHITE
             selectedBgSize = 48
           }) {

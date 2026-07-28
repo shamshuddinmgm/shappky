@@ -16,8 +16,16 @@ fun parsePsOutputToEntries(output: String): List<PsEntry> {
     while (line != null) {
       val parts = line.trim().split(Regex("\\s+"))
       if (parts.size >= 2) {
-        val rawPackageName = parts[1].trim()
-        val packageName = if (rawPackageName.contains(":")) rawPackageName.substringBefore(":") else rawPackageName
+        var rawPackageName = parts[1].trim()
+        // Strip kernel bracket wrappers: [irq/foo.bar]
+        if (rawPackageName.startsWith("[") && rawPackageName.endsWith("]")) {
+          rawPackageName = rawPackageName.removeSurrounding("[", "]")
+        }
+        val packageName = if (rawPackageName.contains(":")) {
+          rawPackageName.substringBefore(":")
+        } else {
+          rawPackageName
+        }
         val rssKb = parts[0].trim().toLongOrNull() ?: 0L
         if (packageName.isNotEmpty() && packageName.contains(".") && !packageName.startsWith("ERROR:")) {
           entries.add(PsEntry(packageName, rssKb))

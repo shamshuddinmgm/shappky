@@ -54,6 +54,16 @@ class ShappkyWidgetProvider : AppWidgetProvider() {
   }
 
   override fun onReceive(context: Context, intent: Intent) {
+    if (AppWidgetManager.ACTION_APPWIDGET_UPDATE == intent.action) {
+      val manager = AppWidgetManager.getInstance(context)
+      val owned = manager.getAppWidgetIds(
+        android.content.ComponentName(context, ShappkyWidgetProvider::class.java),
+      ).toSet()
+      val requested = intent.getIntArrayExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS)?.toSet().orEmpty()
+      if (requested.isNotEmpty() && requested.none { it in owned }) {
+        return
+      }
+    }
     super.onReceive(context, intent)
     // Clicks handled by non-exported TriggerWidgetActionReceiver
   }

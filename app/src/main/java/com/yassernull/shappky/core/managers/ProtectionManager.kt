@@ -1,12 +1,6 @@
 package com.yassernull.shappky.core.managers
 
-import android.app.WallpaperManager
-import android.appwidget.AppWidgetManager
 import android.content.Context
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
-import android.provider.Settings
 import android.util.Log
 
 object ProtectionManager {
@@ -15,15 +9,16 @@ object ProtectionManager {
   private const val KEY_PROTECTED_REGEX = "protectedRegex"
   private const val PREFERENCES_NAME = "AppPreferences"
 
+  /**
+   * User-chosen protected packages only.
+   * Fresh install = empty. No auto-seeded launcher/keyboard/system/Google lists.
+   */
   fun getProtectedApps(context: Context): Set<String> {
     val sharedPrefs = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
-    if (sharedPrefs.contains(KEY_PROTECTED_APPS)) {
-      val savedSet = sharedPrefs.getStringSet(KEY_PROTECTED_APPS, null)
-      if (savedSet != null) {
-        return HashSet(savedSet)
-      }
+    if (!sharedPrefs.contains(KEY_PROTECTED_APPS)) {
+      return emptySet()
     }
-    return getDefaultProtectedApps(context)
+    return HashSet(sharedPrefs.getStringSet(KEY_PROTECTED_APPS, emptySet()) ?: emptySet())
   }
 
   fun saveProtectedApps(context: Context, apps: Set<String>) {
@@ -32,24 +27,12 @@ object ProtectionManager {
     Log.d(TAG, "Saved protected apps count=${apps.size}")
   }
 
+  /**
+   * User-chosen regex only. Fresh install = blank (no OEM auto patterns).
+   */
   fun getProtectedRegex(context: Context): String {
     val sharedPrefs = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
-    if (sharedPrefs.contains(KEY_PROTECTED_REGEX)) {
-      return sharedPrefs.getString(KEY_PROTECTED_REGEX, "") ?: ""
-    }
-
-    val manufacturer = Build.MANUFACTURER
-    val brand = Build.BRAND
-    val isXiaomiFamily = listOf(manufacturer, brand).any {
-      it.equals("Xiaomi", ignoreCase = true) ||
-        it.equals("Redmi", ignoreCase = true) ||
-        it.equals("POCO", ignoreCase = true)
-    }
-    return if (isXiaomiFamily) {
-      "com.miui.*|com.xiaomi.*|com.mi.*|com.hyperos.*|miui.*|com.lbe.security.miui"
-    } else {
-      ""
-    }
+    return sharedPrefs.getString(KEY_PROTECTED_REGEX, "") ?: ""
   }
 
   fun saveProtectedRegex(context: Context, regex: String) {
@@ -57,7 +40,10 @@ object ProtectionManager {
     sharedPrefs.edit().putString(KEY_PROTECTED_REGEX, regex).apply()
   }
 
-  /** True if package must never be killed (self, protected set, or regex). */
+  /**
+   * Only Shappky itself is hard-protected (cannot kill the app running the kill).
+   * Everything else is solely what the user put in the protected list / regex.
+   */
   fun isProtected(context: Context, packageName: String): Boolean {
     if (packageName.isEmpty()) return true
     if (packageName == context.packageName) return true
@@ -74,8 +60,7 @@ object ProtectionManager {
       try {
         val regex = pattern.replace(".", "\\.").replace("*", ".*").toRegex()
         if (regex.matches(packageName)) return true
-      } catch (e: Exception) {
-        // Fallback for simple startsWith if regex compilation fails
+      } catch (_: Exception) {
         if (pattern.endsWith(".*") && packageName.startsWith(pattern.removeSuffix(".*"))) {
           return true
         } else if (packageName == pattern) {
@@ -84,96 +69,5 @@ object ProtectionManager {
       }
     }
     return false
-  }
-
-  fun getDefaultProtectedApps(context: Context): Set<String> {
-    val pm = context.packageManager
-    val defaultSet = mutableSetOf<String>()
-
-    // Self
-    defaultSet.add(context.packageName)
-
-    // Keyboard
-    try {
-      var keyboard = Settings.Secure.getString(context.contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)
-      if (keyboard != null && keyboard.contains("/")) {
-        keyboard = keyboard.split("/")[0]
-        defaultSet.add(keyboard)
-      }
-    } catch (e: Exception) {
-      Log.e(TAG, "Error getting default keyboard", e)
-    }
-
-    // Launcher
-    try {
-      val launcherIntent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
-      val resolveInfo = pm.resolveActivity(launcherIntent, PackageManager.MATCH_DEFAULT_ONLY)
-      resolveInfo?.activityInfo?.packageName?.let { defaultSet.add(it) }
-    } catch (e: Exception) {
-      Log.e(TAG, "Error getting default launcher", e)
-    }
-
-    // Wallpaper
-    try {
-      val wallpaperManager = WallpaperManager.getInstance(context)
-      wallpaperManager.wallpaperInfo?.packageName?.let { defaultSet.add(it) }
-      if (Build.VERSION.SDK_INT >= 34) {
-        wallpaperManager.getWallpaperInfo(WallpaperManager.FLAG_LOCK)?.packageName?.let { defaultSet.add(it) }
-      }
-    } catch (e: Exception) {
-      Log.e(TAG, "Error getting default wallpaper", e)
-    }
-    if (!defaultSet.any { it.contains("wallpaper", ignoreCase = true) }) {
-      try {
-        val wallpaperIntent = Intent("android.service.wallpaper.WallpaperService")
-        val wallpaperServices = pm.queryIntentServices(wallpaperIntent, PackageManager.GET_META_DATA)
-        for (service in wallpaperServices) {
-          service.serviceInfo.packageName?.let { defaultSet.add(it) }
-        }
-      } catch (e: Exception) {
-        Log.e(TAG, "Error finding wallpaper services via PackageManager", e)
-      }
-    }
-
-    // com.android.* and android.* packages
-    try {
-      val packages = pm.getInstalledApplications(PackageManager.GET_META_DATA)
-      for (appInfo in packages) {
-        val pkg = appInfo.packageName
-        if (pkg == "android" || pkg.startsWith("com.android.") || pkg.startsWith("android.")) {
-          defaultSet.add(pkg)
-        }
-      }
-    } catch (e: Exception) {
-      Log.e(TAG, "Error listing installed packages for default protection", e)
-    }
-
-    // Google Android services
-    try {
-      val packages = pm.getInstalledApplications(PackageManager.GET_META_DATA)
-      for (appInfo in packages) {
-        val pkg = appInfo.packageName
-        if (pkg.startsWith("com.google.android.") || pkg.startsWith("com.google.android")) {
-          defaultSet.add(pkg)
-        }
-      }
-    } catch (e: Exception) {
-      Log.e(TAG, "Error listing Google services for default protection", e)
-    }
-
-    // Widget providers
-    try {
-      val awm = AppWidgetManager.getInstance(context)
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-        val providers = awm.getInstalledProviders()
-        for (provider in providers) {
-          provider.provider.packageName?.let { defaultSet.add(it) }
-        }
-      }
-    } catch (e: Exception) {
-      Log.e(TAG, "Error getting widget providers for default protection", e)
-    }
-
-    return defaultSet
   }
 }

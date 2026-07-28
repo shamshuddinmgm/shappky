@@ -30,6 +30,10 @@ class ListWidgetActionReceiver : BroadcastReceiver() {
     when (action) {
       ACTION_APP_CLICK -> {
         val packageName = intent.getStringExtra("package_name") ?: return
+        if (!com.yassernull.shappky.utils.PackageMatchUtils.isValidAndroidPackageName(packageName)) {
+          android.util.Log.w("ListWidgetAction", "Rejected invalid package_name from widget fill-in")
+          return
+        }
         val appName = intent.getStringExtra("app_name") ?: ""
         val appRam = intent.getStringExtra("app_ram") ?: ""
         if (ProtectionManager.isProtected(context, packageName)) {

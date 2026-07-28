@@ -3,13 +3,10 @@ package com.yassernull.shappky.ui.activities.settings
 import android.content.Context
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
-import androidx.compose.material.icons.filled.Apps
-import androidx.compose.material.icons.filled.DoNotDisturb
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,10 +27,6 @@ fun AppsListSection() {
   val context = LocalContext.current
   val sharedPreferences = context.getSharedPreferences("AppPreferences", Context.MODE_PRIVATE)
 
-  var showUserApps by remember { mutableStateOf(sharedPreferences.getBoolean("showUserApps", true)) }
-  var showSystemApps by remember { mutableStateOf(sharedPreferences.getBoolean("showSystemApps", true)) }
-  var showPersistentApps by remember { mutableStateOf(sharedPreferences.getBoolean("showPersistentApps", false)) }
-  var showProtectedApps by remember { mutableStateOf(sharedPreferences.getBoolean("showProtectedApps", false)) }
   var showAppTypeIcons by remember { mutableStateOf(sharedPreferences.getBoolean("showAppTypeIcons", true)) }
 
   var appsAutoRefresh by remember { mutableStateOf(sharedPreferences.getBoolean("appsAutoRefresh", true)) }
@@ -58,54 +51,8 @@ fun AppsListSection() {
   var showAppsRamUsageRefreshIntervalDialog by remember { mutableStateOf(false) }
 
   SettingsHeader(text = stringResource(R.string.settings_apps_list))
-  SwitchSettingRow(
-    icon = Icons.Filled.Apps,
-    title = stringResource(R.string.show_user_apps),
-    summary = stringResource(R.string.show_user_apps_summary),
-    checked = showUserApps,
-    onCheckedChange = {
-      if (it || showSystemApps || showPersistentApps || showProtectedApps) {
-        showUserApps = it
-        sharedPreferences.edit().putBoolean("showUserApps", it).apply()
-      }
-    },
-  )
-  SwitchSettingRow(
-    icon = Icons.Filled.Settings,
-    title = stringResource(R.string.show_system_apps),
-    summary = stringResource(R.string.show_system_apps_summary),
-    checked = showSystemApps,
-    onCheckedChange = {
-      if (it || showUserApps || showPersistentApps || showProtectedApps) {
-        showSystemApps = it
-        sharedPreferences.edit().putBoolean("showSystemApps", it).apply()
-      }
-    },
-  )
-  SwitchSettingRow(
-    icon = Icons.Filled.Security,
-    title = stringResource(R.string.show_persistent_apps),
-    summary = stringResource(R.string.show_persistent_apps_summary),
-    checked = showPersistentApps,
-    onCheckedChange = {
-      if (it || showUserApps || showSystemApps || showProtectedApps) {
-        showPersistentApps = it
-        sharedPreferences.edit().putBoolean("showPersistentApps", it).apply()
-      }
-    },
-  )
-  SwitchSettingRow(
-    icon = Icons.Filled.DoNotDisturb,
-    title = stringResource(R.string.show_protected_apps),
-    summary = stringResource(R.string.show_protected_apps_summary),
-    checked = showProtectedApps,
-    onCheckedChange = {
-      if (it || showUserApps || showSystemApps || showPersistentApps) {
-        showProtectedApps = it
-        sharedPreferences.edit().putBoolean("showProtectedApps", it).apply()
-      }
-    },
-  )
+  MainScreensOrderSection(sharedPreferences)
+
   SwitchSettingRow(
     icon = Icons.Filled.Palette,
     title = stringResource(R.string.show_app_type_icons),

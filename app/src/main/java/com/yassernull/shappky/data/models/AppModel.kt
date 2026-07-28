@@ -12,4 +12,6 @@ data class AppModel(
   var isPersistentApp: Boolean,
   var isProtected: Boolean,
   var isSelected: Boolean = false,
+  /** Non-installable running process (HAL / media / alias / kernel-ish). */
+  var isServiceProcess: Boolean = false,
 )

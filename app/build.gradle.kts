@@ -20,8 +20,8 @@ android {
     minSdk = 24
     targetSdk = 36
     // Format: 34.52.<revision>-async  (revision = feature pushes/commits on this fork)
-    versionCode = 345206
-    versionName = "34.52.06-async"
+    versionCode = 345219
+    versionName = "34.52.19-async"
     multiDexEnabled = true
   }
 
@@ -58,6 +58,7 @@ android {
 
   buildTypes {
     debug {
+      isDebuggable = true
       signingConfig = signingConfigs.getByName("debug")
       versionNameSuffix = "-debug"
     }

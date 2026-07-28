@@ -28,6 +28,10 @@ class TriggerActionExecutor(
   }
   fun enableShappkyService(rule: TriggerRule) {
     Log.d(TAG, "Enable Rule triggered! Starting ShappkyService.")
+    context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+      .edit()
+      .putBoolean(com.yassernull.shappky.core.preferences.AppsListPreferences.KEY_SERVICE_ENABLED, true)
+      .commit()
     val intent = Intent(context, ShappkyService::class.java)
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
       context.startForegroundService(intent)
@@ -43,6 +47,10 @@ class TriggerActionExecutor(
 
   fun disableShappkyService(rule: TriggerRule) {
     Log.d(TAG, "Disable Rule triggered! Stopping ShappkyService.")
+    context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+      .edit()
+      .putBoolean(com.yassernull.shappky.core.preferences.AppsListPreferences.KEY_SERVICE_ENABLED, false)
+      .commit()
     val intent = Intent(context, ShappkyService::class.java)
     context.stopService(intent)
     NotificationUtils.showTriggerFreedMemoryNotification(

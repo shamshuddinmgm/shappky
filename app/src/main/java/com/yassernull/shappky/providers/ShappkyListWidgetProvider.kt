@@ -39,6 +39,15 @@ class ShappkyListWidgetProvider : AppWidgetProvider() {
   }
 
   override fun onReceive(context: Context, intent: Intent) {
+    // Only honor widget updates for IDs that belong to this provider (mitigate cross-app UPDATE spam).
+    if (AppWidgetManager.ACTION_APPWIDGET_UPDATE == intent.action) {
+      val manager = AppWidgetManager.getInstance(context)
+      val owned = manager.getAppWidgetIds(ComponentName(context, ShappkyListWidgetProvider::class.java)).toSet()
+      val requested = intent.getIntArrayExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS)?.toSet().orEmpty()
+      if (requested.isNotEmpty() && requested.none { it in owned }) {
+        return
+      }
+    }
     super.onReceive(context, intent)
     // Click/refresh handled by non-exported ListWidgetActionReceiver
   }

@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#0C35DA</color>
+    <!-- Maroon plate; original white mascot is in ic_launcher_foreground. -->
+    <color name="ic_launcher_background">#B4233A</color>
 </resources>

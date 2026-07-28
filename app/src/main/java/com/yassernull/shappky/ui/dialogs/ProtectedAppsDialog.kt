@@ -237,8 +237,9 @@ fun ProtectedAppsDialog(
       ) {
         TextButton(
           onClick = {
-            selectedPackages = ProtectionManager.getDefaultProtectedApps(context)
-            selectedPackages = applyRegexToSelectedPackages(regexText, allApps, selectedPackages)
+            // Clear — user decides what to protect; no auto-seeded lists.
+            selectedPackages = emptySet()
+            regexText = ""
           },
         ) {
           Text(stringResource(R.string.reset))

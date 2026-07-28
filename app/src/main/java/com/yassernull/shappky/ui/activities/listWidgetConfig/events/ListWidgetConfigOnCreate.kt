@@ -48,6 +48,12 @@ fun ListWidgetConfigActivity.handleOnCreate(savedInstanceState: Bundle?) {
     return
   }
 
+  if (!com.yassernull.shappky.utils.WidgetOwnershipUtils.isOwnedListWidget(this, appWidgetId)) {
+    Log.w("WidgetConfig", "appWidgetId $appWidgetId is not owned by ShappkyListWidgetProvider, finishing")
+    finish()
+    return
+  }
+
   val prefs = getSharedPreferences("AppPreferences", Context.MODE_PRIVATE)
   val appTheme = prefs.getString("appTheme", "dark") ?: "dark"
 

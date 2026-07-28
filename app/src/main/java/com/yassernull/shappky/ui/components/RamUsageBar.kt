@@ -40,6 +40,8 @@ fun RamUsageBar(ramState: RamState) {
     LinearProgressIndicator(
       progress = { ramState.progress },
       modifier = Modifier.weight(1f),
+      color = MaterialTheme.colorScheme.primary,
+      trackColor = MaterialTheme.colorScheme.surfaceVariant,
     )
   }
 }

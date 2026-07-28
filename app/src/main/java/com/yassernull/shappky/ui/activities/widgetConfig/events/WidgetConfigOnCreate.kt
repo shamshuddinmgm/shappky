@@ -33,6 +33,12 @@ fun WidgetConfigActivity.handleOnCreate(savedInstanceState: Bundle?) {
     return
   }
 
+  if (!com.yassernull.shappky.utils.WidgetOwnershipUtils.isOwnedTriggerWidget(this, appWidgetId)) {
+    Log.w("WidgetConfig", "appWidgetId $appWidgetId is not owned by ShappkyWidgetProvider, finishing")
+    finish()
+    return
+  }
+
   setContent {
     AppTheme(withBackground = false) {
       WidgetConfigScreen(

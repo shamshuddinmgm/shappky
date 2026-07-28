@@ -245,21 +245,29 @@ fun SwitchActionSettingRow(
 
 @Composable
 fun SortButton(label: String, selected: Boolean, onClick: () -> Unit) {
-  val containerColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-  val contentColor = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+  val containerColor = if (selected) {
+    MaterialTheme.colorScheme.primary
+  } else {
+    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
+  }
+  val contentColor = if (selected) {
+    MaterialTheme.colorScheme.onPrimary
+  } else {
+    MaterialTheme.colorScheme.onSurfaceVariant
+  }
 
   Box(
     modifier = Modifier
-      .clip(RoundedCornerShape(8.dp))
+      .clip(RoundedCornerShape(10.dp))
       .background(containerColor)
       .clickable(onClick = onClick)
-      .padding(horizontal = 14.dp, vertical = 6.dp),
+      .padding(horizontal = 14.dp, vertical = 8.dp),
     contentAlignment = Alignment.Center,
   ) {
     Text(
       text = label,
       fontSize = 13.sp,
-      fontWeight = FontWeight.Medium,
+      fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
       color = contentColor,
     )
   }

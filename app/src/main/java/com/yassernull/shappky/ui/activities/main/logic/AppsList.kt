@@ -5,13 +5,16 @@ import android.os.Looper
 import android.util.Log
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.yassernull.shappky.core.managers.AutoRefreshManager
@@ -22,7 +25,10 @@ import com.yassernull.shappky.core.managers.ShellManager
 import com.yassernull.shappky.core.preferences.AppsListPreferences
 import com.yassernull.shappky.core.preferences.PREFERENCES_NAME
 import com.yassernull.shappky.data.models.AppModel
+import com.yassernull.shappky.ui.activities.main.AllScreenChecklist
+import com.yassernull.shappky.ui.activities.main.AppsCategory
 import com.yassernull.shappky.ui.activities.main.MainActivity
+import com.yassernull.shappky.ui.activities.main.filterForScreen
 import com.yassernull.shappky.ui.components.AppRow
 import com.yassernull.shappky.utils.AppSortUtils
 import java.util.concurrent.ExecutorService
@@ -32,6 +38,9 @@ import java.util.concurrent.Executors
 @Composable
 fun AppsList(
   apps: List<AppModel>,
+  category: AppsCategory,
+  checklist: AllScreenChecklist,
+  listKey: String = category.name,
   isLoadingBackgroundApps: Boolean,
   showAppTypeIcons: Boolean,
   onRefresh: () -> Unit,
@@ -39,13 +48,25 @@ fun AppsList(
   onKillApp: (AppModel, Boolean) -> Unit,
   onAppLongClick: (AppModel) -> Unit,
 ) {
+  // New list state per category so scroll position doesn't fight category switches.
+  val listState = remember(listKey) { LazyListState() }
+  val filteredApps by remember(category, checklist) {
+    derivedStateOf { apps.filterForScreen(category, checklist) }
+  }
   PullToRefreshBox(
     isRefreshing = isLoadingBackgroundApps,
     onRefresh = onRefresh,
     modifier = Modifier.fillMaxSize(),
   ) {
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
-      items(apps, key = { it.packageName }) { app ->
+    LazyColumn(
+      state = listState,
+      modifier = Modifier.fillMaxSize(),
+    ) {
+      items(
+        items = filteredApps,
+        key = { it.packageName },
+        contentType = { if (it.isServiceProcess) "svc" else "app" },
+      ) { app ->
         AppRow(
           app = app,
           showAppTypeIcons = showAppTypeIcons,
@@ -80,8 +101,12 @@ object AppsListLogic {
   internal var showSystemApps by mutableStateOf(true)
   internal var showPersistentApps by mutableStateOf(false)
   internal var showProtectedApps by mutableStateOf(false)
+  internal var showServiceProcesses by mutableStateOf(false)
   internal var showAppTypeIcons by mutableStateOf(true)
   internal var appsAutoRefresh = true
+
+  /** True while the main category HorizontalPager is being dragged/flung. */
+  internal var pagerScrollInProgress = false
   internal lateinit var autoRefreshManager: AutoRefreshManager
   private const val TAG = "AppsListLogic"
 
@@ -162,16 +187,17 @@ object AppsListLogic {
     showSystemApps: Boolean,
     showPersistentApps: Boolean,
     showProtectedApps: Boolean,
+    showServiceProcesses: Boolean,
     activity: MainActivity,
     onUpdateValue: (Boolean) -> Unit,
   ) {
-    if (!currentValue || showSystemApps || showPersistentApps || showProtectedApps) {
+    if (!currentValue || showSystemApps || showPersistentApps || showProtectedApps || showServiceProcesses) {
       val newValue = !currentValue
       onUpdateValue(newValue)
-      appManager.setShowUserApps(newValue)
-      activity.getSharedPreferences(PREFERENCES_NAME, android.content.Context.MODE_PRIVATE).edit().putBoolean(AppsListPreferences.KEY_SHOW_USER_APPS, newValue).apply()
+      activity.getSharedPreferences(PREFERENCES_NAME, android.content.Context.MODE_PRIVATE)
+        .edit().putBoolean(AppsListPreferences.KEY_SHOW_USER_APPS, newValue).apply()
       replaceAllSelection(activity, false)
-      loadBackgroundApps(activity, true, appsAutoRefresh) { forceMenuVisibilityUpdate(activity) }
+      forceMenuVisibilityUpdate(activity)
     }
   }
 
@@ -180,16 +206,17 @@ object AppsListLogic {
     showUserApps: Boolean,
     showPersistentApps: Boolean,
     showProtectedApps: Boolean,
+    showServiceProcesses: Boolean,
     activity: MainActivity,
     onUpdateValue: (Boolean) -> Unit,
   ) {
-    if (!currentValue || showUserApps || showPersistentApps || showProtectedApps) {
+    if (!currentValue || showUserApps || showPersistentApps || showProtectedApps || showServiceProcesses) {
       val newValue = !currentValue
       onUpdateValue(newValue)
-      appManager.setShowSystemApps(newValue)
-      activity.getSharedPreferences(PREFERENCES_NAME, android.content.Context.MODE_PRIVATE).edit().putBoolean(AppsListPreferences.KEY_SHOW_SYSTEM_APPS, newValue).apply()
+      activity.getSharedPreferences(PREFERENCES_NAME, android.content.Context.MODE_PRIVATE)
+        .edit().putBoolean(AppsListPreferences.KEY_SHOW_SYSTEM_APPS, newValue).apply()
       replaceAllSelection(activity, false)
-      loadBackgroundApps(activity, true, appsAutoRefresh) { forceMenuVisibilityUpdate(activity) }
+      forceMenuVisibilityUpdate(activity)
     }
   }
 
@@ -198,16 +225,17 @@ object AppsListLogic {
     showUserApps: Boolean,
     showSystemApps: Boolean,
     showProtectedApps: Boolean,
+    showServiceProcesses: Boolean,
     activity: MainActivity,
     onUpdateValue: (Boolean) -> Unit,
   ) {
-    if (!currentValue || showUserApps || showSystemApps || showProtectedApps) {
+    if (!currentValue || showUserApps || showSystemApps || showProtectedApps || showServiceProcesses) {
       val newValue = !currentValue
       onUpdateValue(newValue)
-      appManager.setShowPersistentApps(newValue)
-      activity.getSharedPreferences(PREFERENCES_NAME, android.content.Context.MODE_PRIVATE).edit().putBoolean(AppsListPreferences.KEY_SHOW_PERSISTENT_APPS, newValue).apply()
+      activity.getSharedPreferences(PREFERENCES_NAME, android.content.Context.MODE_PRIVATE)
+        .edit().putBoolean(AppsListPreferences.KEY_SHOW_PERSISTENT_APPS, newValue).apply()
       replaceAllSelection(activity, false)
-      loadBackgroundApps(activity, true, appsAutoRefresh) { forceMenuVisibilityUpdate(activity) }
+      forceMenuVisibilityUpdate(activity)
     }
   }
 
@@ -216,16 +244,36 @@ object AppsListLogic {
     showUserApps: Boolean,
     showSystemApps: Boolean,
     showPersistentApps: Boolean,
+    showServiceProcesses: Boolean,
     activity: MainActivity,
     onUpdateValue: (Boolean) -> Unit,
   ) {
-    if (!currentValue || showUserApps || showSystemApps || showPersistentApps) {
+    if (!currentValue || showUserApps || showSystemApps || showPersistentApps || showServiceProcesses) {
       val newValue = !currentValue
       onUpdateValue(newValue)
-      appManager.setShowProtectedApps(newValue)
-      activity.getSharedPreferences(PREFERENCES_NAME, android.content.Context.MODE_PRIVATE).edit().putBoolean(AppsListPreferences.KEY_SHOW_PROTECTED_APPS, newValue).apply()
+      activity.getSharedPreferences(PREFERENCES_NAME, android.content.Context.MODE_PRIVATE)
+        .edit().putBoolean(AppsListPreferences.KEY_SHOW_PROTECTED_APPS, newValue).apply()
       replaceAllSelection(activity, false)
-      loadBackgroundApps(activity, true, appsAutoRefresh) { forceMenuVisibilityUpdate(activity) }
+      forceMenuVisibilityUpdate(activity)
+    }
+  }
+
+  fun onToggleShowServiceProcesses(
+    currentValue: Boolean,
+    showUserApps: Boolean,
+    showSystemApps: Boolean,
+    showPersistentApps: Boolean,
+    showProtectedApps: Boolean,
+    activity: MainActivity,
+    onUpdateValue: (Boolean) -> Unit,
+  ) {
+    if (!currentValue || showUserApps || showSystemApps || showPersistentApps || showProtectedApps) {
+      val newValue = !currentValue
+      onUpdateValue(newValue)
+      activity.getSharedPreferences(PREFERENCES_NAME, android.content.Context.MODE_PRIVATE)
+        .edit().putBoolean(AppsListPreferences.KEY_SHOW_SERVICE_PROCESSES, newValue).apply()
+      replaceAllSelection(activity, false)
+      forceMenuVisibilityUpdate(activity)
     }
   }
 
@@ -276,18 +324,49 @@ object AppsListLogic {
         }
       }
 
-      appsDataList.clear()
-      appsDataList.addAll(updatedResult)
+      // Prefer in-place field updates when the package set is unchanged — avoids pager jank.
+      val oldKeys = appsDataList.map { it.packageName }
+      val newKeys = updatedResult.map { it.packageName }
+      if (oldKeys == newKeys && appsDataList.isNotEmpty()) {
+        for (i in updatedResult.indices) {
+          val old = appsDataList[i]
+          val neu = updatedResult[i]
+          if (old.ramKb != neu.ramKb ||
+            old.appRam != neu.appRam ||
+            old.isSelected != neu.isSelected ||
+            old.isProtected != neu.isProtected
+          ) {
+            appsDataList[i] = neu
+          }
+        }
+      } else {
+        appsDataList.clear()
+        appsDataList.addAll(updatedResult)
+        sortAppsDataList(activity)
+      }
 
-      sortAppsDataList(activity)
       onMenuVisibilityUpdated()
     }
   }
 
-  fun replaceAllSelection(activity: MainActivity, selected: Boolean) {
-    val updated = appsDataList.map { app -> if (!app.isProtected) app.copy(isSelected = selected) else app }
-    appsDataList.clear()
-    appsDataList.addAll(updated)
+  fun replaceAllSelection(
+    activity: MainActivity,
+    selected: Boolean,
+    limitToPackages: Collection<String>? = null,
+  ) {
+    val limit = limitToPackages?.toHashSet()
+    for (i in appsDataList.indices) {
+      val app = appsDataList[i]
+      val newSelected = when {
+        app.isProtected || app.isServiceProcess -> false
+        limit == null -> selected
+        selected -> app.packageName in limit
+        else -> false
+      }
+      if (app.isSelected != newSelected) {
+        appsDataList[i] = app.copy(isSelected = newSelected)
+      }
+    }
   }
 
   fun replaceApp(activity: MainActivity, app: AppModel) {
@@ -335,6 +414,7 @@ object AppsListLogic {
     val appsAutoRefreshIntervalMs = prefs.getLong(AppsListPreferences.KEY_APPS_AUTO_REFRESH_INTERVAL_MS, AppsListPreferences.DEFAULT_APPS_AUTO_REFRESH_INTERVAL_MS).coerceAtLeast(1000L)
 
     autoRefreshManager.updateAppsAutoRefresh(appsAutoRefresh, appsAutoRefreshIntervalMs) {
+      if (pagerScrollInProgress) return@updateAppsAutoRefresh
       loadBackgroundApps(
         activity = activity,
         showRefreshIndicator = false,
