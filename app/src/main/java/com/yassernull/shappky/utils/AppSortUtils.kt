@@ -12,16 +12,16 @@ object AppSortUtils {
     sortMode: String?,
     descending: Boolean,
   ): List<AppModel> {
-    val appTypeComparator = compareBy<AppModel> { it.isSystemApp }.thenBy { it.isPersistentApp }
-
     val comparator = when (sortMode) {
       SORT_BY_RAM -> {
+        // Pure RAM order — do NOT group by system/persistent first (that caused
+        // high-RAM system apps to appear below low-RAM user apps).
         val ramComparator = if (descending) {
           compareByDescending<AppModel> { it.ramKb }
         } else {
-          compareBy { it.ramKb }
+          compareBy<AppModel> { it.ramKb }
         }
-        appTypeComparator.then(ramComparator).thenBy(String.CASE_INSENSITIVE_ORDER) { it.appName }
+        ramComparator.thenBy(String.CASE_INSENSITIVE_ORDER) { it.appName }
       }
       SORT_BY_TYPE -> {
         val typeComparator = if (descending) {
@@ -32,6 +32,8 @@ object AppSortUtils {
         typeComparator.thenBy { it.appName.lowercase(Locale.getDefault()) }
       }
       else -> {
+        // Name: keep light type grouping so user apps cluster, then A–Z / Z–A.
+        val appTypeComparator = compareBy<AppModel> { it.isSystemApp }.thenBy { it.isPersistentApp }
         val nameComparator = if (descending) {
           compareByDescending<AppModel> { it.appName.lowercase(Locale.getDefault()) }
         } else {

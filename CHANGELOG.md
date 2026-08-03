@@ -6,6 +6,28 @@ Version format: **`34.52.<revision>-async`** (`versionCode` = `3452xx`)
 
 ---
 
+## [34.52.22-async] — 2026-08-03
+
+### Fixed
+- Per-app RAM now reads **TOTAL PSS** from `dumpsys meminfo -s` (ActivityManager). `/proc/*/smaps_rollup` is unreadable for other apps even with Shizuku, so earlier builds still showed inflated **RSS** (cross-checked on device: e.g. list matched system TOTAL PSS within ~0.5 MB)
+- RAM sort descending/ascending orders **purely by memory size** (no longer groups user/system first)
+- Top RAM bar after kill: optimistic free uses the shown PSS figure and **holds** until MemAvailable catches up (no snap-back that looked like “0 MB freed”)
+- RSS fallback (if dumpsys/smaps unavailable) uses **max** process RSS per package, never a sum
+
+## [34.52.21-async] — 2026-08-03
+
+### Fixed
+- Attempted PSS via `/proc/*/smaps_rollup` (superseded by 34.52.22 — smaps unreadable under Shizuku)
+- Top RAM bar after kill: optimistic free hold until MemAvailable catches up
+- RSS fallback uses max process RSS per package, never a sum
+
+## [34.52.20-async] — 2026-08-03
+
+### Fixed
+- RAM sort descending/ascending now orders **purely by memory size** (no longer groups user/system first, which mixed high-RAM apps into the middle of the list)
+- Top RAM bar updates after kills: optimistic free + forced `/proc/meminfo` re-reads
+- Re-sort list when per-app RAM values refresh while sort-by-RAM is active
+
 ## [34.52.19-async] — 2026-07-28
 
 ### Changed

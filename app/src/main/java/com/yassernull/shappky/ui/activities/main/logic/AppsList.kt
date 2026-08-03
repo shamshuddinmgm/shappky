@@ -111,15 +111,21 @@ object AppsListLogic {
   private const val TAG = "AppsListLogic"
 
   fun onKillSelected(activity: MainActivity) {
-    val packagesToKill = appsDataList.filter { it.isSelected }.map { it.packageName }
+    val selected = appsDataList.filter { it.isSelected }
+    val packagesToKill = selected.map { it.packageName }
     if (packagesToKill.isEmpty()) return
 
+    val freedKb = selected.sumOf { it.ramKb }
     replaceAllSelection(activity, false)
+    applyOptimisticRamFree(freedKb)
 
     appManager.killPackages(
       packagesToKill,
       Runnable {
-        loadBackgroundApps(activity, showRefreshIndicator = true, appsAutoRefresh = false) { forceMenuVisibilityUpdate(activity) }
+        loadBackgroundApps(activity, showRefreshIndicator = true, appsAutoRefresh = false) {
+          forceMenuVisibilityUpdate(activity)
+        }
+        refreshRamBarAfterKill(freedKb)
       },
       showToast = true,
     )
@@ -136,13 +142,35 @@ object AppsListLogic {
     force: Boolean,
     activity: MainActivity,
   ) {
+    val freedKb = app.ramKb
+    applyOptimisticRamFree(freedKb)
     appManager.killApp(
       app.packageName,
       Runnable {
         loadBackgroundApps(activity, true, appsAutoRefresh) { forceMenuVisibilityUpdate(activity) }
+        refreshRamBarAfterKill(freedKb)
       },
       force,
     )
+  }
+
+  /** Drop killed apps' PSS from the top bar immediately; hold until MemAvailable catches up. */
+  private fun applyOptimisticRamFree(freedKb: Long) {
+    if (freedKb <= 0L) return
+    val current = ramState
+    if (current.totalKb <= 0) return
+    if (::ramMonitor.isInitialized) {
+      ramMonitor.applyOptimisticFree(freedKb, current)
+    } else {
+      val newUsed = (current.usedKb - freedKb.toInt()).coerceIn(0, current.totalKb)
+      ramState = current.copy(usedKb = newUsed)
+    }
+  }
+
+  private fun refreshRamBarAfterKill(freedKb: Long) {
+    if (::ramMonitor.isInitialized) {
+      ramMonitor.applyFreedMemory(freedKb)
+    }
   }
 
   fun onApplySort(
@@ -328,6 +356,7 @@ object AppsListLogic {
       val oldKeys = appsDataList.map { it.packageName }
       val newKeys = updatedResult.map { it.packageName }
       if (oldKeys == newKeys && appsDataList.isNotEmpty()) {
+        var ramChanged = false
         for (i in updatedResult.indices) {
           val old = appsDataList[i]
           val neu = updatedResult[i]
@@ -336,7 +365,17 @@ object AppsListLogic {
             old.isSelected != neu.isSelected ||
             old.isProtected != neu.isProtected
           ) {
+            if (old.ramKb != neu.ramKb) ramChanged = true
             appsDataList[i] = neu
+          }
+        }
+        // Re-sort when RAM values moved while user is sorting by size.
+        if (ramChanged) {
+          val prefs = activity.getSharedPreferences(PREFERENCES_NAME, android.content.Context.MODE_PRIVATE)
+          if (prefs.getString(AppsListPreferences.KEY_SORT_MODE, AppsListPreferences.SORT_BY_NAME) ==
+            AppsListPreferences.SORT_BY_RAM
+          ) {
+            sortAppsDataList(activity)
           }
         }
       } else {
@@ -346,6 +385,10 @@ object AppsListLogic {
       }
 
       onMenuVisibilityUpdated()
+      // Keep top bar in sync with list after every full background reload (incl. post-kill).
+      if (::ramMonitor.isInitialized) {
+        ramMonitor.refreshNow()
+      }
     }
   }
 

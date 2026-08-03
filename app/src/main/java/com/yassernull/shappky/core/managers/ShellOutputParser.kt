@@ -37,10 +37,101 @@ fun parsePsOutputToEntries(output: String): List<PsEntry> {
   return entries
 }
 
+/** Sum PSS across processes of the same package (PSS is already proportional — summing is correct). */
 fun aggregateByPackage(entries: List<PsEntry>): Map<String, Long> {
   val map = mutableMapOf<String, Long>()
   for (entry in entries) {
     map[entry.packageName] = (map[entry.packageName] ?: 0L) + entry.rssKb
+  }
+  return map
+}
+
+/**
+ * RSS fallback only: take the **largest** process RSS per package.
+ * Summing RSS double-counts shared zygote/framework pages and wildly inflates the list.
+ */
+fun aggregateByPackageMaxRss(entries: List<PsEntry>): Map<String, Long> {
+  val map = mutableMapOf<String, Long>()
+  for (entry in entries) {
+    val prev = map[entry.packageName] ?: 0L
+    if (entry.rssKb > prev) map[entry.packageName] = entry.rssKb
+  }
+  return map
+}
+
+/**
+ * Parse `dumpsys meminfo -s` style / smaps probe lines: `"<pssKb> <processName>"`.
+ * Process names like `pkg:service` collapse to `pkg`.
+ */
+fun parsePssProbeOutput(output: String): List<PsEntry> {
+  val entries = mutableListOf<PsEntry>()
+  BufferedReader(StringReader(output)).use { reader ->
+    var line = reader.readLine()
+    while (line != null) {
+      val trimmed = line.trim()
+      if (trimmed.isEmpty() || trimmed.startsWith("ERROR")) {
+        line = reader.readLine()
+        continue
+      }
+      val parts = trimmed.split(Regex("\\s+"), limit = 2)
+      if (parts.size >= 2) {
+        val pssKb = parts[0].toLongOrNull() ?: 0L
+        var name = parts[1].trim()
+        if (name.startsWith("[") && name.endsWith("]")) {
+          name = name.removeSurrounding("[", "]")
+        }
+        val packageName = name.substringBefore(":")
+        if (pssKb > 0L && packageName.contains('.') && !packageName.startsWith("ERROR:")) {
+          entries.add(PsEntry(packageName, pssKb))
+        }
+      }
+      line = reader.readLine()
+    }
+  }
+  return entries
+}
+
+private val MEMINFO_PID_HEADER = Regex("""\*\*\s*MEMINFO in pid\s+\d+\s*\[([^\]]+)\]\s*\*\*""")
+private val MEMINFO_TOTAL_PSS = Regex("""TOTAL PSS:\s+(\d+)""")
+
+/**
+ * Aggregate **TOTAL PSS** from `dumpsys meminfo -s` (or full package dumps) by package.
+ * Process names like `pkg:service` collapse to `pkg`; PSS is summed across processes.
+ */
+fun parseDumpsysMeminfoPssByPackage(output: String): Map<String, Long> {
+  val map = mutableMapOf<String, Long>()
+  var currentPackage: String? = null
+  BufferedReader(StringReader(output)).use { reader ->
+    var line = reader.readLine()
+    while (line != null) {
+      val trimmed = line.trim()
+      if (trimmed.startsWith("ERROR")) {
+        line = reader.readLine()
+        continue
+      }
+      val header = MEMINFO_PID_HEADER.find(trimmed)
+      if (header != null) {
+        var name = header.groupValues[1].trim()
+        if (name.startsWith("[") && name.endsWith("]")) {
+          name = name.removeSurrounding("[", "]")
+        }
+        val pkg = name.substringBefore(":")
+        currentPackage = if (pkg.contains('.')) pkg else null
+        line = reader.readLine()
+        continue
+      }
+      val pssMatch = MEMINFO_TOTAL_PSS.find(trimmed)
+      if (pssMatch != null) {
+        val pssKb = pssMatch.groupValues[1].toLongOrNull() ?: 0L
+        val pkg = currentPackage
+        if (pkg != null && pssKb > 0L) {
+          map[pkg] = (map[pkg] ?: 0L) + pssKb
+        }
+        // Only the App Summary TOTAL PSS line; ignore further TOTAL lines in the same block.
+        currentPackage = null
+      }
+      line = reader.readLine()
+    }
   }
   return map
 }

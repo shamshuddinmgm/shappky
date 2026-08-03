@@ -36,6 +36,12 @@ class AppProcessLoader(
   @Volatile
   private var isCurrentlyLoadingRam = false
 
+  @Volatile
+  private var cachedPssMap: Map<String, Long> = emptyMap()
+
+  @Volatile
+  private var cachedPssAtMs: Long = 0L
+
   fun formatMemorySize(kb: Long): String = when {
     kb < 1024 -> context.getString(R.string.kb_format, kb)
     kb < 1024 * 1024 -> context.getString(R.string.mb_format, kb / 1024f)
@@ -96,43 +102,46 @@ class AppProcessLoader(
           val protectedApps = ProtectionManager.getProtectedApps(context)
 
           if (shellManager.isShellCommandReady()) {
-            // Include hyphen/@ names so HAL / vendor services can appear when enabled.
-            val command = "${ShellManager.toyboxPath()} ps -A -o rss,name | grep '\\.'"
+            // Discover running dotted process names via ps, then measure PSS (not RSS).
+            // Summing RSS double-counts shared framework pages; PSS matches what kill frees.
             try {
-              val fullOutput = shellManager.runShellCommandAndGetFullOutput(command)
-              if (fullOutput != null) {
-                val entries = parsePsOutputToEntries(fullOutput)
-                val pm = context.packageManager
-                val appEntries = mutableListOf<PsEntry>()
-                val serviceEntries = mutableListOf<PsEntry>()
-                for (entry in entries) {
-                  try {
-                    pm.getApplicationInfo(entry.packageName, 0)
-                    appEntries.add(entry)
-                  } catch (_: PackageManager.NameNotFoundException) {
-                    serviceEntries.add(entry)
-                  }
+              val pssMap = loadPackagePssKbMap()
+              val discovery = shellManager.runShellCommandAndGetFullOutput(
+                "${ShellManager.toyboxPath()} ps -A -o rss,name | grep '\\.'",
+              )
+              val entries = if (discovery != null) parsePsOutputToEntries(discovery) else emptyList()
+              val pm = context.packageManager
+              val appNames = linkedSetOf<String>()
+              val serviceNames = linkedSetOf<String>()
+              for (entry in entries) {
+                try {
+                  pm.getApplicationInfo(entry.packageName, 0)
+                  appNames.add(entry.packageName)
+                } catch (_: PackageManager.NameNotFoundException) {
+                  serviceNames.add(entry.packageName)
                 }
-                val packageRamMap = aggregateByPackage(appEntries)
-                val serviceRamMap = aggregateByPackage(serviceEntries)
-                val runningEntries = packageRamMap.map { "${it.key}:${it.value}" }.toSet()
-                val serviceProcessEntries = serviceRamMap.map { "${it.key}:${it.value}" }.toSet()
-                val defaultIcon = try {
-                  pm.getDefaultActivityIcon()
-                } catch (_: Exception) {
-                  context.packageManager.getApplicationIcon(context.packageName)
-                }
-
-                result = AppModelFilter.buildRunningAppModels(
-                  runningEntries = runningEntries,
-                  hiddenApps = hiddenApps,
-                  protectedApps = protectedApps,
-                  serviceProcessEntries = serviceProcessEntries,
-                  context = context,
-                  formatMemorySize = ::formatMemorySize,
-                  defaultIcon = defaultIcon,
-                ).toMutableList()
               }
+              // Fallback RSS (max per package) only when PSS probe failed for that name.
+              val rssFallback = aggregateByPackageMaxRss(entries)
+              fun ramFor(name: String): Long = pssMap[name] ?: rssFallback[name] ?: 0L
+
+              val runningEntries = appNames.map { "$it:${ramFor(it)}" }.toSet()
+              val serviceProcessEntries = serviceNames.map { "$it:${ramFor(it)}" }.toSet()
+              val defaultIcon = try {
+                pm.getDefaultActivityIcon()
+              } catch (_: Exception) {
+                context.packageManager.getApplicationIcon(context.packageName)
+              }
+
+              result = AppModelFilter.buildRunningAppModels(
+                runningEntries = runningEntries,
+                hiddenApps = hiddenApps,
+                protectedApps = protectedApps,
+                serviceProcessEntries = serviceProcessEntries,
+                context = context,
+                formatMemorySize = ::formatMemorySize,
+                defaultIcon = defaultIcon,
+              ).toMutableList()
             } catch (e: Exception) {
               Log.e(TAG, "Error getting running apps", e)
               handler.post {
@@ -200,19 +209,29 @@ class AppProcessLoader(
     isCurrentlyLoadingRam = true
     if (!executor.isShutdown) {
       executor.execute {
-        val startTime = System.currentTimeMillis()
-        val requestedPackages = packageNames.toSet()
         val ramUsageByPackage = mutableMapOf<String, Long>()
         try {
+          val requestedPackages = packageNames.toSet()
           if (requestedPackages.isNotEmpty() && shellManager.isShellCommandReady()) {
-            val command = "${ShellManager.toyboxPath()} ps -A -o rss,name | grep '\\.' | grep -v '[-@]'"
             try {
-              val fullOutput = shellManager.runShellCommandAndGetFullOutput(command)
-              if (fullOutput != null) {
-                val entries = parsePsOutputToEntries(fullOutput)
-                val filtered = entries.filter { it.packageName in requestedPackages }
-                val aggregated = aggregateByPackage(filtered)
-                ramUsageByPackage.putAll(aggregated)
+              val pssMap = loadPackagePssKbMap()
+              for (pkg in requestedPackages) {
+                val pss = pssMap[pkg]
+                if (pss != null && pss > 0L) ramUsageByPackage[pkg] = pss
+              }
+              // Fill gaps with max-RSS so rows don't go blank if smaps is blocked for a pid.
+              if (ramUsageByPackage.size < requestedPackages.size) {
+                val discovery = shellManager.runShellCommandAndGetFullOutput(
+                  "${ShellManager.toyboxPath()} ps -A -o rss,name | grep '\\.' | grep -v '[-@]'",
+                )
+                if (discovery != null) {
+                  val rssMax = aggregateByPackageMaxRss(
+                    parsePsOutputToEntries(discovery).filter { it.packageName in requestedPackages },
+                  )
+                  for ((pkg, rss) in rssMax) {
+                    if (pkg !in ramUsageByPackage) ramUsageByPackage[pkg] = rss
+                  }
+                }
               }
             } catch (e: Exception) {
               Log.e(TAG, "Error updating app RAM usage", e)
@@ -226,6 +245,56 @@ class AppProcessLoader(
         }
       }
     }
+  }
+
+  /**
+   * Package TOTAL PSS via `dumpsys meminfo -s`.
+   *
+   * `/proc/<pid>/smaps_rollup` is almost always unreadable for other apps even under
+   * Shizuku (Permission denied) — that path fell back to inflated RSS. ActivityManager's
+   * dumpsys reports real TOTAL PSS (what Settings-style memory uses).
+   */
+  private fun loadPackagePssKbMap(): Map<String, Long> {
+    if (!shellManager.isShellCommandReady()) return emptyMap()
+    val now = System.currentTimeMillis()
+    val cached = cachedPssMap
+    if (cached.isNotEmpty() && now - cachedPssAtMs < PSS_CACHE_TTL_MS) {
+      return cached
+    }
+    val output = shellManager.runShellCommandAndGetFullOutput("dumpsys meminfo -s")
+      ?: return emptyMap()
+    val map = parseDumpsysMeminfoPssByPackage(output)
+    if (map.isEmpty()) {
+      // Legacy one-line probe fallback (rarely works without root).
+      val tb = ShellManager.toyboxPath()
+      val probe =
+        "$tb ps -A -o pid,name 2>/dev/null | while read -r pid name; do " +
+          "case \"\$pid\" in ''|PID|pid) continue ;; esac; " +
+          "case \"\$name\" in *.*) ;; *) continue ;; esac; " +
+          "f=\"/proc/\$pid/smaps_rollup\"; " +
+          "[ -r \"\$f\" ] || continue; " +
+          "pss=\$(awk '/^Pss:/{print \$2; exit}' \"\$f\" 2>/dev/null); " +
+          "if [ -n \"\$pss\" ]; then echo \"\$pss \$name\"; fi; " +
+          "done"
+      val probeOut = shellManager.runShellCommandAndGetFullOutput(probe)
+      val fromProbe = if (probeOut != null) {
+        aggregateByPackage(parsePssProbeOutput(probeOut))
+      } else {
+        emptyMap()
+      }
+      if (fromProbe.isEmpty()) {
+        Log.w(TAG, "PSS map empty (dumpsys + smaps); RAM rows will use max-RSS fallback")
+        return emptyMap()
+      }
+      cachedPssMap = fromProbe
+      cachedPssAtMs = now
+      Log.d(TAG, "PSS map from smaps size=${fromProbe.size}")
+      return fromProbe
+    }
+    cachedPssMap = map
+    cachedPssAtMs = now
+    Log.d(TAG, "PSS map from dumpsys meminfo size=${map.size}")
+    return map
   }
 
   fun loadAppDetailedInfo(app: AppModel, callback: Consumer<com.yassernull.shappky.data.models.AppDetailedInfo>) {
@@ -347,6 +416,7 @@ class AppProcessLoader(
 
   companion object {
     private const val TAG = "ShappkyApps"
+    private const val PSS_CACHE_TTL_MS = 8_000L
     const val PREFERENCES_NAME = "AppPreferences"
     const val KEY_HIDDEN_APPS = "hidden_apps"
   }
